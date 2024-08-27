@@ -1,2 +1,3 @@
-﻿main.obj : error LNK2019: unresolved external symbol "__int64 __cdecl WndProc(struct HWND__ *,unsigned int,unsigned __int64,__int64)" (?WndProc@@YA_JPEAUHWND__@@I_K_J@Z) referenced in function "void __cdecl RegisterWindowClass(struct HINSTANCE__ *,wchar_t const *)" (?RegisterWindowClass@@YAXPEAUHINSTANCE__@@PEB_W@Z)
+﻿  main.cpp
+main.obj : error LNK2019: unresolved external symbol "__int64 __cdecl WndProc(struct HWND__ *,unsigned int,unsigned __int64,__int64)" (?WndProc@@YA_JPEAUHWND__@@I_K_J@Z) referenced in function "void __cdecl RegisterWindowClass(struct HINSTANCE__ *,wchar_t const *)" (?RegisterWindowClass@@YAXPEAUHINSTANCE__@@PEB_W@Z)
 C:\Users\hs998\Desktop\Dx12Examples\x64\Debug\Dx12Examples.exe : fatal error LNK1120: 1 unresolved externals
