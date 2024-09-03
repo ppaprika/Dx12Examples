@@ -21,5 +21,11 @@
     <ClCompile Include="Helpers.h">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="CommandQueue.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandQueue.cpp">
+      <Filter>Resource Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

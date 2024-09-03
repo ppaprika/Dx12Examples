@@ -131,6 +131,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CommandQueue.cpp" />
+    <ClCompile Include="CommandQueue.h" />
     <ClCompile Include="Helpers.h" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
