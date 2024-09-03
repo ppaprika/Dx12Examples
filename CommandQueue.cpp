@@ -20,3 +20,13 @@ CommandQueue::CommandQueue(Microsoft::WRL::ComPtr<ID3D12Device2> device, D3D12_C
 	m_FenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 	assert(m_FenceEvent && "Failed to create fence event.");
 }
+
+Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> CommandQueue::GetCommandList()
+{
+}
+
+uint64_t CommandQueue::ExecuteCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> commandList)
+{
+}
+
+
