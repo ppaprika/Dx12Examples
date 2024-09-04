@@ -401,7 +401,7 @@ ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> device
     ThrowIfFailed(device->CreateCommandList(0, type, commandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList)));
 
     ThrowIfFailed(commandList->Close());
-
+    
     return commandList;
 }
 

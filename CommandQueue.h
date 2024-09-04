@@ -11,6 +11,7 @@ class CommandQueue
 {
 public:
 	CommandQueue(Microsoft::WRL::ComPtr<ID3D12Device2> device, D3D12_COMMAND_LIST_TYPE type);
+    virtual ~CommandQueue();
 
     // Get an available command list from the command queue.
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> GetCommandList();
@@ -27,7 +28,7 @@ public:
 
 	void Flush();
 
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> GetD3D12CommandQueue() const;
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> GetD3D12CommandQueue() const { return m_d3d12CommandQueue; };
 
 protected:
 
