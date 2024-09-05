@@ -39,24 +39,24 @@ public:
 
     const std::wstring& GetWindowName() const;
 
-    int GetClientWidth() const;
-    int GetClientHeight() const;
+    int GetClientWidth() const { return m_ClientWidth; };
+    int GetClientHeight() const { return m_ClientHeight; };
 
     /**
     * Should this window be rendered with vertical refresh synchronization.
     */
-    bool IsVSync() const;
-    void SetVSync(bool vSync);
-    void ToggleVSync();
+    bool IsVSync() const { return m_VSync; }
+    void SetVSync(bool vSync) { m_VSync = vSync; }
+    void ToggleVSync() { m_VSync = !m_VSync; }
 
     /**
     * Is this a windowed window or full-screen?
     */
-    bool IsFullScreen() const;
+    bool IsFullScreen() const { return m_Fullscreen; }
 
     // Set the fullscreen state of the window.
-    void SetFullscreen(bool fullscreen);
-    void ToggleFullscreen();
+    void SetFullscreen(bool fullscreen) { m_Fullscreen = fullscreen; }
+    void ToggleFullscreen() { m_Fullscreen = !m_Fullscreen; }
 
     /**
      * Show this window.

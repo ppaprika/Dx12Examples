@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "Helpers.h"
+#include "Application.h"
 
 Game::Game(const std::wstring& name, int width, int height, bool vSync)
 {
@@ -11,7 +12,10 @@ Game::Game(const std::wstring& name, int width, int height, bool vSync)
 
 bool Game::Initialize()
 {
-    SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+    Application& app = Application::Get();
+    std::shared_ptr<Window> wPtr = app.CreateRenderWindow(m_Name, m_Width, m_Height, m_vSync);
+
+
 
     return false;
 }

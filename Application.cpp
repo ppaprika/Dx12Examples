@@ -4,6 +4,8 @@
 
 #include "Helpers.h"
 #include "CommandQueue.h"
+#include "Game.h"
+#include "Window.h"
 
 constexpr wchar_t WINDOW_CLASS_NAME[] = L"DX12RenderWindowClass";
 
@@ -19,6 +21,14 @@ extern bool g_UseWarp;
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 Application* Application::gs_Application = nullptr;
+
+struct MakeWindow : public Window
+{
+	MakeWindow(HWND hWnd, const std::wstring& windowName, int clientWidth, int clientHeight, bool vSync)
+		: Window(hWnd, windowName, clientWidth, clientHeight, vSync)
+	{}
+};
+
 
 void Application::Create(HINSTANCE hInst)
 {
@@ -63,7 +73,19 @@ std::shared_ptr<Window> Application::CreateRenderWindow(const std::wstring& wind
 		m_hInstance,
 		nullptr);
 
-	gs_Windows.insert()
+	WindowPtr wPtr = std::make_shared<MakeWindow>(windowHandle, windowName, clientWidth, clientHeight, vSync);
+	gs_Windows.insert(std::pair<HWND, WindowPtr>(windowHandle, wPtr));
+	gs_WindowByName.insert(std::pair<std::wstring, WindowPtr>(windowName, wPtr));
+
+	return wPtr;
+}
+
+int Application::Run(std::shared_ptr<Game> pGame)
+{
+	pGame->Initialize();
+	pGame->LoadContent();
+
+
 }
 
 Application::Application(HINSTANCE hInst)
