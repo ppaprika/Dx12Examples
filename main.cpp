@@ -46,6 +46,7 @@
 #include <dxgi.h>
 #include <dxgi1_3.h>
 #include <wrl/client.h>
+#include <dwmapi.h>
 
 #include "Helpers.h"
 
@@ -54,7 +55,6 @@ using namespace Microsoft::WRL;
 
 constexpr int numBackBuffers = 3;
 constexpr wchar_t wndClassName[] = L"TryIt";
-//const wchar_t* wndClassName = L"TryIt";
 
 ComPtr<IDXGIAdapter> g_adapter;
 ComPtr<ID3D12Device> g_device;
@@ -63,6 +63,12 @@ ComPtr<ID3D12GraphicsCommandList> g_commandList;
 ComPtr<IDXGISwapChain> g_swapChain;
 ComPtr<ID3D12Resource> g_backBuffers[numBackBuffers];
 ComPtr<ID3D12CommandAllocator> g_commandAllocators[numBackBuffers];
+ComPtr<ID3D12DescriptorHeap> g_descriptorHeap;
+ComPtr<ID3D12Fence> g_fence;
+UINT fenceValue = 0;
+
+bool g_dxInited = false;
+
 
 LRESULT CALLBACK wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -156,6 +162,41 @@ ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12CommandAllocato
 	return value;
 }
 
+bool updateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain> swapChain, ComPtr<ID3D12Resource> resources[], UINT bufferNum, ComPtr<ID3D12DescriptorHeap> heap, D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+	D3D12_RENDER_TARGET_VIEW_DESC rtDesc = {};
+	rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	rtDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE rtHandle = heap->GetCPUDescriptorHandleForHeapStart();
+
+	SIZE_T heapSize = device->GetDescriptorHandleIncrementSize(type);
+
+	for(int i = 0; i < bufferNum; ++i)
+	{
+		ComPtr<ID3D12Resource> buffer;
+		swapChain->GetBuffer(i, IID_PPV_ARGS(&buffer));
+		device->CreateRenderTargetView(buffer.Get(), &rtDesc, rtHandle);
+		resources[i] = buffer;
+
+		rtHandle.ptr += heapSize;
+	}
+
+	return true;
+}
+
+ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device> device, UINT num, D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+	ComPtr<ID3D12DescriptorHeap> value;
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.NumDescriptors = num;
+	heapDesc.Type = type;
+
+	ThrowIfFailed(device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&value)));
+
+	return value;
+}
+
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
 {
 #if defined(_DEBUG)
@@ -195,7 +236,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 	// Show window
 	ShowWindow(hWnd, nCmdShow);
-	UpdateWindow(hWnd);
 
 	// get adapter
 	g_adapter = GetAdapter();
@@ -218,14 +258,17 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	// create command list
 	g_commandList = CreateCommandList(g_commandAllocators[0], g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
+	// create descriptor
+	g_descriptorHeap = CreateDescriptorHeap(g_device, numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-
+	// create rt
+	updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 
 
 	MSG msg = {};
-	//while (PeekMessage(&msg, nullptr, 0, 0, 0))
-	while(GetMessage(&msg, nullptr, 0, 0))
+	while (PeekMessage(&msg, nullptr, 0, 0, 1))
+	//while(GetMessage(&msg, nullptr, 0, 0))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
@@ -234,10 +277,18 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	return (int)msg.wParam;
 }
 
+void Render()
+{
+	
+}
+
 LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
+	case WM_PAINT:
+		Render();
+		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
