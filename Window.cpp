@@ -20,6 +20,11 @@ const std::wstring& Window::GetWindowName() const
 	return m_WindowName;
 }
 
+void Window::Show()
+{
+	::ShowWindow(m_hWnd, SW_SHOW);
+}
+
 Window::Window(HWND hWnd, const std::wstring& windowName, int clientWidth, int clientHeight, bool vSync)
 {
 	m_hWnd = hWnd;
@@ -34,6 +39,25 @@ Window::Window(HWND hWnd, const std::wstring& windowName, int clientWidth, int c
 	m_IsTearingSupported = app.IsTearingSupported();
 	CreateSwapChain();
 
+	// create rtv on swap chain's back buffers, and store back buffers' reference
+	UpdateRenderTargetViews();
+}
+
+void Window::RegisterCallbacks(std::shared_ptr<Game> pGame)
+{
+	m_pGame = pGame;
+}
+
+void Window::OnUpdate(UpdateEventArgs& e)
+{
+}
+
+void Window::OnRender(RenderEventArgs& e)
+{
+}
+
+void Window::OnMouseMoved(MouseMotionEventArgs& e)
+{
 }
 
 Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::CreateSwapChain()
@@ -84,9 +108,6 @@ Microsoft::WRL::ComPtr<IDXGISwapChain4> Window::CreateSwapChain()
 	heapDesc.NumDescriptors = BufferCount;
 
 	ThrowIfFailed(app.GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_d3d12RTVDescriptorHeap)));
-
-	// create rtv on swap chain's back buffers, and store back buffers' reference
-	UpdateRenderTargetViews();
 
 	return m_dxgiSwapChain;
 }

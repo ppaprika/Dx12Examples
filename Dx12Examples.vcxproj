@@ -132,23 +132,26 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="CommandQueue.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="CommandQueue.h" />
     <ClCompile Include="Game.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Helpers.h" />
-    <ClCompile Include="HighResolutionClock.cpp" />
+    <ClCompile Include="HighResolutionClock.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="RenderCube.cpp" />
-    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="RenderCube.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Window.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />

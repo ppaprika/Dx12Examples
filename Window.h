@@ -163,5 +163,4 @@ private:
 
     RECT m_WindowRect;
     bool m_IsTearingSupported;
-
 }; 
