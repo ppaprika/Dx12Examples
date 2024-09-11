@@ -47,6 +47,8 @@
 #include <dxgi1_3.h>
 #include <wrl/client.h>
 #include <dwmapi.h>
+#include <dxgi1_4.h>
+#include <D3DX12/d3dx12_barriers.h>
 
 #include "Helpers.h"
 
@@ -60,12 +62,15 @@ ComPtr<IDXGIAdapter> g_adapter;
 ComPtr<ID3D12Device> g_device;
 ComPtr<ID3D12CommandQueue> g_commandQueue;
 ComPtr<ID3D12GraphicsCommandList> g_commandList;
-ComPtr<IDXGISwapChain> g_swapChain;
+ComPtr<IDXGISwapChain3> g_swapChain;
 ComPtr<ID3D12Resource> g_backBuffers[numBackBuffers];
 ComPtr<ID3D12CommandAllocator> g_commandAllocators[numBackBuffers];
 ComPtr<ID3D12DescriptorHeap> g_descriptorHeap;
 ComPtr<ID3D12Fence> g_fence;
 UINT fenceValue = 0;
+UINT g_currentBackBuffer = 0;
+SIZE_T g_heapSize = 0;
+UINT buffersFenceValue[numBackBuffers] = {fenceValue, fenceValue, fenceValue};
 
 bool g_dxInited = false;
 
@@ -170,7 +175,7 @@ bool updateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain> swap
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtHandle = heap->GetCPUDescriptorHandleForHeapStart();
 
-	SIZE_T heapSize = device->GetDescriptorHandleIncrementSize(type);
+	g_heapSize = device->GetDescriptorHandleIncrementSize(type);
 
 	for(int i = 0; i < bufferNum; ++i)
 	{
@@ -179,7 +184,7 @@ bool updateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain> swap
 		device->CreateRenderTargetView(buffer.Get(), &rtDesc, rtHandle);
 		resources[i] = buffer;
 
-		rtHandle.ptr += heapSize;
+		rtHandle.ptr += g_heapSize;
 	}
 
 	return true;
@@ -193,6 +198,14 @@ ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device> device, U
 	heapDesc.Type = type;
 
 	ThrowIfFailed(device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&value)));
+
+	return value;
+}
+
+ComPtr<ID3D12Fence> CreateFence(ComPtr<ID3D12Device> device)
+{
+	ComPtr<ID3D12Fence> value;
+	ThrowIfFailed(device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&value)));
 
 	return value;
 }
@@ -247,7 +260,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	g_commandQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	// create swap chain
-	g_swapChain = CreateSwapChain(hWnd, g_commandQueue, numBackBuffers);
+	ComPtr<IDXGISwapChain> tempChain = CreateSwapChain(hWnd, g_commandQueue, numBackBuffers);
+	ThrowIfFailed(tempChain.As(&g_swapChain));
 
 	// create command allocator
 	for(int i = 0; i < numBackBuffers; ++i)
@@ -264,11 +278,15 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	// create rt
 	updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
+	// create fence
+	g_fence = CreateFence(g_device);
 
+
+	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 
 	MSG msg = {};
-	while (PeekMessage(&msg, nullptr, 0, 0, 1))
-	//while(GetMessage(&msg, nullptr, 0, 0))
+	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
+	while(GetMessage(&msg, nullptr, 0, 0))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
@@ -279,7 +297,54 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 void Render()
 {
+	// reset command list and command queue
+	ComPtr<ID3D12Resource> backBuffer = g_backBuffers[g_currentBackBuffer];
+	ComPtr<ID3D12CommandAllocator> allocator = g_commandAllocators[g_currentBackBuffer];
+	D3D12_CPU_DESCRIPTOR_HANDLE rtv = g_descriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	rtv.ptr += g_heapSize * g_currentBackBuffer;
+
+	allocator->Reset();
+	g_commandList->Reset(allocator.Get(), nullptr);
+
+	{
+		// back buffer present -> render target
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+		g_commandList->ResourceBarrier(1, &barrier);
+	}
+
+	// clear color
+	const FLOAT color[4] = {0.5f, 0.9f, 0.1f, 1};
+	g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+
+	{
+		// render target -> present
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT);
+
+		g_commandList->ResourceBarrier(1, &barrier);
+	}
 	
+	// execute command list
+	ID3D12GraphicsCommandList* rawLists =  g_commandList.Get();
+	ID3D12CommandList* lists[] = {rawLists};
+	g_commandQueue->ExecuteCommandLists(1, lists);
+	g_commandQueue->Signal(g_fence.Get(), fenceValue);
+	buffersFenceValue[g_currentBackBuffer] = fenceValue;
+	fenceValue++;
+
+	// present
+	g_swapChain->Present(1, 0);
+	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
+	UINT waitValue = buffersFenceValue[g_currentBackBuffer];
+	if(g_fence->GetCompletedValue() < waitValue)
+	{
+		HANDLE hEvent = 
+		g_fence->SetEventOnCompletion(waitValue, hEvent);
+	}
 }
 
 LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
