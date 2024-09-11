@@ -41,6 +41,7 @@
 //    return retCode;
 //}
 
+#include <chrono>
 #include <corecrt_wstdio.h>
 #include <d3d12.h>
 #include <dxgi.h>
@@ -71,8 +72,8 @@ UINT fenceValue = 0;
 UINT g_currentBackBuffer = 0;
 SIZE_T g_heapSize = 0;
 UINT buffersFenceValue[numBackBuffers] = {fenceValue, fenceValue, fenceValue};
-
 bool g_dxInited = false;
+std::chrono::time_point<std::chrono::steady_clock> lastTick;
 
 
 LRESULT CALLBACK wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -140,6 +141,7 @@ ComPtr<IDXGISwapChain> CreateSwapChain(HWND hWnd, ComPtr<ID3D12CommandQueue> com
 	swapChaindesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChaindesc.SampleDesc = { 1, 0 };
 	swapChaindesc.Windowed = true;
+	swapChaindesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
 
 	ComPtr<IDXGIFactory2> factory;
 	ComPtr<IDXGISwapChain> value;
@@ -284,6 +286,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 
+	lastTick = std::chrono::high_resolution_clock::now();
+
 	MSG msg = {};
 	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
 	while(GetMessage(&msg, nullptr, 0, 0))
@@ -316,8 +320,22 @@ void Render()
 	}
 
 	// clear color
-	const FLOAT color[4] = {0.5f, 0.9f, 0.1f, 1};
-	g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+	if(g_currentBackBuffer == 0)
+	{
+		FLOAT color[4] = { 0.5f, 0.9f, 0.1f, 1 };
+		g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+	}
+	else if(g_currentBackBuffer == 1)
+	{
+		FLOAT color[4] = { 0.f, 0.f, 0.f, 1 };
+		g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+	}
+	else
+	{
+		FLOAT color[4] = { 1.f, 1.f, 1.f, 1 };
+		g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+	}
+
 
 	{
 		// render target -> present
@@ -327,6 +345,8 @@ void Render()
 
 		g_commandList->ResourceBarrier(1, &barrier);
 	}
+
+	g_commandList->Close();
 	
 	// execute command list
 	ID3D12GraphicsCommandList* rawLists =  g_commandList.Get();
@@ -337,14 +357,34 @@ void Render()
 	fenceValue++;
 
 	// present
+
+	// tearing version
+	//g_swapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING);
+
+	// vSync version
 	g_swapChain->Present(1, 0);
+
 	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 	UINT waitValue = buffersFenceValue[g_currentBackBuffer];
 	if(g_fence->GetCompletedValue() < waitValue)
 	{
-		HANDLE hEvent = 
+		HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 		g_fence->SetEventOnCompletion(waitValue, hEvent);
+		WaitForSingleObject(hEvent, INFINITE);
 	}
+}
+
+
+
+void Update()
+{
+	auto now = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double, std::milli> elapsed = now - lastTick;
+	lastTick = now;
+	double fps = 1000 / elapsed.count();
+	char buffer[500];
+	sprintf_s(buffer, 500, "FPS: %f\n", fps);
+	OutputDebugStringA(buffer);
 }
 
 LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -352,6 +392,7 @@ LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_PAINT:
+		Update();
 		Render();
 		return 0;
 	case WM_DESTROY:
