@@ -1,59 +1,63 @@
-//#define WIN32_LEAN_AND_MEAN
-//#include <Windows.h>
-//#include <Shlwapi.h>
-//
-//#include "Application.h"
-//#include "RenderCube.h"
-//
-//#include <dxgidebug.h>
-//
-//void ReportLiveObjects()
-//{
-//    IDXGIDebug1* dxgiDebug;
-//    DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
-//
-//    dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
-//    dxgiDebug->Release();
-//}
-//
-//int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
-//{
-//    int retCode = 0;
-//
-//    // Set the working directory to the path of the executable.
-//    WCHAR path[MAX_PATH];
-//    HMODULE hModule = GetModuleHandleW(NULL);
-//    if (GetModuleFileNameW(hModule, path, MAX_PATH) > 0)
-//    {
-//        PathRemoveFileSpecW(path);
-//        SetCurrentDirectoryW(path);
-//    }
-//
-//    Application::Create(hInstance);
-//    {
-//        std::shared_ptr<RenderCube> demo = std::make_shared<RenderCube>(L"Learning DirectX 12 - Lesson 2", 1280, 720);
-//        retCode = Application::Get().Run(demo);
-//    }
-//    Application::Destroy();
-//
-//    atexit(&ReportLiveObjects);
-//
-//    return retCode;
-//}
+
+
+#include <D3DX12/d3dx12_core.h>
+#include <D3DX12/d3dx12_resource_helpers.h>
 
 #include <chrono>
 #include <corecrt_wstdio.h>
-#include <d3d12.h>
+#include <d3dcompiler.h>
+#include <DirectXMath.h>
 #include <dxgi.h>
 #include <dxgi1_3.h>
 #include <wrl/client.h>
 #include <dwmapi.h>
 #include <dxgi1_4.h>
 #include <D3DX12/d3dx12_barriers.h>
+#include <Shlwapi.h>
+#include <D3DX12/d3dx12_pipeline_state_stream.h>
+#include <D3DX12/d3dx12_root_signature.h>
+
 
 #include "Helpers.h"
 
 using namespace Microsoft::WRL;
+using namespace DirectX;
+
+
+// Clamp a value between a min and max range.
+template<typename T>
+constexpr const T& clamp(const T& val, const T& min, const T& max)
+{
+	return val < min ? min : val > max ? max : val;
+}
+
+// Vertex data for a colored cube.
+struct VertexPosColor
+{
+	XMFLOAT3 Position;
+	XMFLOAT3 Color;
+};
+
+static VertexPosColor g_Vertices[8] = {
+	{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
+	{ XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
+	{ XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
+	{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }, // 3
+	{ XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }, // 4
+	{ XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) }, // 5
+	{ XMFLOAT3(1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) }, // 6
+	{ XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
+};
+
+static WORD g_Indicies[36] =
+{
+	0, 1, 2, 0, 2, 3,
+	4, 6, 5, 4, 7, 6,
+	4, 5, 1, 4, 1, 0,
+	3, 2, 6, 3, 6, 7,
+	1, 5, 6, 1, 6, 2,
+	4, 0, 3, 4, 3, 7
+};
 
 
 constexpr int numBackBuffers = 3;
@@ -74,6 +78,20 @@ SIZE_T g_heapSize = 0;
 UINT buffersFenceValue[numBackBuffers] = {fenceValue, fenceValue, fenceValue};
 bool g_dxInited = false;
 std::chrono::time_point<std::chrono::steady_clock> lastTick;
+
+// used to render cube
+ComPtr<ID3D12Resource> g_vertexBuffer;
+D3D12_VERTEX_BUFFER_VIEW g_vertexBufferView;
+
+ComPtr<ID3D12Resource> g_indexBuffer;
+D3D12_INDEX_BUFFER_VIEW g_indexBufferView;
+
+ComPtr<ID3D12Resource> g_depthBuffer;
+ComPtr<ID3D12DescriptorHeap> g_dsvHeap;
+
+ComPtr<ID3D12RootSignature> g_rootSignature;
+ComPtr<ID3D12PipelineState> g_pipelineState;
+
 
 
 LRESULT CALLBACK wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -212,8 +230,57 @@ ComPtr<ID3D12Fence> CreateFence(ComPtr<ID3D12Device> device)
 	return value;
 }
 
+void UpdateBufferResource(
+	ComPtr<ID3D12GraphicsCommandList2> commandList,
+	ID3D12Resource** pDestinationResource,
+	ID3D12Resource** pIntermediateResource,
+	size_t numElements, size_t elementSize, const void* bufferData,
+	D3D12_RESOURCE_FLAGS flags, ComPtr<ID3D12Device> device)
+{
+	size_t bufferSize = numElements * elementSize;
+
+	CD3DX12_HEAP_PROPERTIES destHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	CD3DX12_RESOURCE_DESC destinationResDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, flags);
+	ThrowIfFailed(device->CreateCommittedResource(
+		&destHeapProperties,
+		D3D12_HEAP_FLAG_NONE, 
+		&destinationResDesc, 
+		D3D12_RESOURCE_STATE_COMMON, 
+		nullptr, 
+		IID_PPV_ARGS(pDestinationResource)));
+
+	if(bufferData)
+	{
+		CD3DX12_HEAP_PROPERTIES heapPropertiesDesc(D3D12_HEAP_TYPE_UPLOAD);
+		CD3DX12_RESOURCE_DESC intermediateResDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
+		ThrowIfFailed(device->CreateCommittedResource(
+			&heapPropertiesDesc,
+			D3D12_HEAP_FLAG_NONE,
+			&intermediateResDesc,
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(pIntermediateResource)
+		));
+
+		D3D12_SUBRESOURCE_DATA subresourceData = {};
+		subresourceData.pData = bufferData;
+
+		UpdateSubresources(commandList.Get(), *pDestinationResource, *pIntermediateResource, 0, 0, 1, &subresourceData);
+	}
+}
+
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
 {
+	// change path to current binary's position
+	WCHAR path[MAX_PATH];
+	HMODULE hModule = GetModuleHandleW(NULL);
+	if(GetModuleFileNameW(hModule, path, MAX_PATH) > 0)
+	{
+		PathRemoveFileSpecW(path);
+		SetCurrentDirectoryW(path);
+	}
+
+
 #if defined(_DEBUG)
 	ComPtr<ID3D12Debug> debugController;
 	if(SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
@@ -283,10 +350,104 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	// create fence
 	g_fence = CreateFence(g_device);
 
-
 	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 
 	lastTick = std::chrono::high_resolution_clock::now();
+
+	// upload vertex buffer data
+	ComPtr<ID3D12Resource> intermediateVertexBuffer;
+	ComPtr<ID3D12GraphicsCommandList2> inList;
+	g_commandList.As(&inList);
+	UpdateBufferResource(inList, &g_vertexBuffer, &intermediateVertexBuffer, _countof(g_Vertices), sizeof(VertexPosColor), g_Vertices, D3D12_RESOURCE_FLAG_NONE, g_device);
+	g_vertexBufferView.BufferLocation = g_vertexBuffer->GetGPUVirtualAddress();
+	g_vertexBufferView.SizeInBytes = sizeof(g_Vertices);
+	g_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
+
+	// upload index buffer data
+	ComPtr<ID3D12Resource> intermediateIndexBuffer;
+	UpdateBufferResource(inList, &g_indexBuffer, &intermediateIndexBuffer, _countof(g_Indicies), sizeof(WORD), g_Indicies, D3D12_RESOURCE_FLAG_NONE, g_device);
+	g_indexBufferView.BufferLocation = g_indexBuffer->GetGPUVirtualAddress();
+	g_indexBufferView.SizeInBytes = sizeof(g_Indicies);
+	g_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+
+
+	// create dev heap
+	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	heapDesc.NumDescriptors = 1;
+	ThrowIfFailed(g_device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&g_dsvHeap)));
+
+	ComPtr<ID3DBlob> vertexShader;
+	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShader));
+
+	ComPtr<ID3DBlob> pixelShader;
+	ThrowIfFailed(D3DReadFileToBlob(L"PixelShader.cso", &pixelShader));
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+	};
+
+	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+	if(FAILED(g_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+	{
+		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+	}
+
+	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+	CD3DX12_ROOT_PARAMETER1 rootParameter[1];
+	rootParameter[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription = {};
+	rootSignatureDescription.Init_1_1(_countof(rootParameter), rootParameter, 0, nullptr, rootSignatureFlags);
+
+	ComPtr<ID3DBlob> rootSignatureBolb;
+	ComPtr<ID3DBlob> errorBold;
+	ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription, featureData.HighestVersion, &rootSignatureBolb, &errorBold));
+
+	ThrowIfFailed(g_device->CreateRootSignature(0, rootSignatureBolb->GetBufferPointer(), rootSignatureBolb->GetBufferSize(), IID_PPV_ARGS(&g_rootSignature)));
+
+	struct PipelineStateStream
+	{
+		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopology;
+		CD3DX12_PIPELINE_STATE_STREAM_VS VS;
+		CD3DX12_PIPELINE_STATE_STREAM_PS PS;
+		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+	} pipelineStateStream;
+
+	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+	rtvFormats.NumRenderTargets = 1;
+	rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	pipelineStateStream.pRootSignature = g_rootSignature.Get();
+	pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
+	pipelineStateStream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
+	pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
+	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pipelineStateStream.RTVFormats = rtvFormats;
+
+	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {};
+	pipelineStateStreamDesc.pPipelineStateSubobjectStream = &pipelineStateStream;
+	pipelineStateStreamDesc.SizeInBytes = sizeof(PipelineStateStream);
+
+	ComPtr<ID3D12Device2> device2;
+	ThrowIfFailed(g_device.As(&device2));
+	device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&g_pipelineState));
+
+	
+
+
 
 	MSG msg = {};
 	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
@@ -299,7 +460,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	return (int)msg.wParam;
 }
 
-void Render()
+
+void RenderCleanColor()
 {
 	// reset command list and command queue
 	ComPtr<ID3D12Resource> backBuffer = g_backBuffers[g_currentBackBuffer];
@@ -393,7 +555,7 @@ LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_PAINT:
 		Update();
-		Render();
+		RenderCleanColor();
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
