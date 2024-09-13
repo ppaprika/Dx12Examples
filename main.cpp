@@ -12,6 +12,7 @@
 #include <wrl/client.h>
 #include <dwmapi.h>
 #include <dxgi1_4.h>
+#include <intsafe.h>
 #include <D3DX12/d3dx12_barriers.h>
 #include <Shlwapi.h>
 #include <D3DX12/d3dx12_pipeline_state_stream.h>
@@ -61,6 +62,8 @@ static WORD g_Indicies[36] =
 
 
 constexpr int numBackBuffers = 3;
+constexpr int windowWidth = 700;
+constexpr int windowHeight = 700;
 constexpr wchar_t wndClassName[] = L"TryIt";
 
 ComPtr<IDXGIAdapter> g_adapter;
@@ -78,6 +81,7 @@ SIZE_T g_heapSize = 0;
 UINT buffersFenceValue[numBackBuffers] = {fenceValue, fenceValue, fenceValue};
 bool g_dxInited = false;
 std::chrono::time_point<std::chrono::steady_clock> lastTick;
+std::chrono::time_point<std::chrono::steady_clock> startPoint;
 
 // used to render cube
 ComPtr<ID3D12Resource> g_vertexBuffer;
@@ -91,6 +95,10 @@ ComPtr<ID3D12DescriptorHeap> g_dsvHeap;
 
 ComPtr<ID3D12RootSignature> g_rootSignature;
 ComPtr<ID3D12PipelineState> g_pipelineState;
+
+XMMATRIX g_modelMatrix;
+XMMATRIX g_viewMatrix;
+XMMATRIX g_projectionMatrix;
 
 
 
@@ -269,6 +277,33 @@ void UpdateBufferResource(
 	}
 }
 
+void ResizeDepthBuffer(int width, int height, ComPtr<ID3D12Device> device, ComPtr<ID3D12Resource> depthBufferResource, ComPtr<ID3D12DescriptorHeap> devHeap)
+{
+	D3D12_CLEAR_VALUE optimizedClearValue = {};
+	optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	optimizedClearValue.DepthStencil = { 1.0f, 0 };
+
+	CD3DX12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, width, height, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+	ThrowIfFailed(device->CreateCommittedResource(
+		&heapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&resourceDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&optimizedClearValue,
+		IID_PPV_ARGS(&depthBufferResource)
+	));
+
+	D3D12_DEPTH_STENCIL_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_D32_FLOAT;
+	desc.Flags = D3D12_DSV_FLAG_NONE;
+	desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
+
+	auto dsv = devHeap->GetCPUDescriptorHandleForHeapStart();
+	device->CreateDepthStencilView(depthBufferResource.Get(), &desc, dsv);
+}
+
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
 {
 	// change path to current binary's position
@@ -305,7 +340,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	}
 
 	// create window
-	HWND hWnd = CreateWindowW(wndClassName, L"WindowOne", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 500, 500, nullptr, nullptr, hInstance, nullptr);
+	HWND hWnd = CreateWindowW(wndClassName, L"WindowOne", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nullptr, nullptr, hInstance, nullptr);
 
 	if (hWnd == nullptr)
 	{
@@ -353,11 +388,17 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 
 	lastTick = std::chrono::high_resolution_clock::now();
+	startPoint = lastTick;
 
 	// upload vertex buffer data
 	ComPtr<ID3D12Resource> intermediateVertexBuffer;
+	// create copy list/ allocator/ queue for upload
+	ComPtr<ID3D12CommandAllocator> tempAllocator = CreateCommandAllocator(g_device, D3D12_COMMAND_LIST_TYPE_COPY);
 	ComPtr<ID3D12GraphicsCommandList2> inList;
-	g_commandList.As(&inList);
+	CreateCommandList(tempAllocator, g_device, D3D12_COMMAND_LIST_TYPE_COPY).As(&inList);
+	ComPtr<ID3D12CommandQueue> tempQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_COPY);
+	ComPtr<ID3D12Fence> tempFence = CreateFence(g_device);
+
 	UpdateBufferResource(inList, &g_vertexBuffer, &intermediateVertexBuffer, _countof(g_Vertices), sizeof(VertexPosColor), g_Vertices, D3D12_RESOURCE_FLAG_NONE, g_device);
 	g_vertexBufferView.BufferLocation = g_vertexBuffer->GetGPUVirtualAddress();
 	g_vertexBufferView.SizeInBytes = sizeof(g_Vertices);
@@ -443,11 +484,27 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 	ComPtr<ID3D12Device2> device2;
 	ThrowIfFailed(g_device.As(&device2));
-	device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&g_pipelineState));
+	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&g_pipelineState)));
 
-	
+	// do upload and wait for fence value
+	inList->Close();
+	ID3D12CommandList* uploadList[] = { inList.Get() };
 
+	tempQueue->ExecuteCommandLists(1, uploadList);
+	tempQueue->Signal(tempFence.Get(), 1);
+	if(tempFence->GetCompletedValue() != 1)
+	{
+		HANDLE uploadEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		tempFence->SetEventOnCompletion(1, uploadEvent);
+		WaitForSingleObject(uploadEvent, DWORD_MAX);
+	}
 
+	inList.Reset();
+	tempAllocator.Reset();
+	tempQueue.Reset();
+	tempFence.Reset();
+
+	ResizeDepthBuffer(windowWidth, windowHeight, g_device, g_depthBuffer, g_dsvHeap);
 
 	MSG msg = {};
 	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
@@ -458,6 +515,29 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	}
 
 	return (int)msg.wParam;
+}
+
+void RenderCube()
+{
+	UINT currentBackBufferIndex = g_swapChain->GetCurrentBackBufferIndex();
+	ComPtr<ID3D12Resource> backBuffer = g_backBuffers[currentBackBufferIndex];
+	ComPtr<ID3D12CommandAllocator> allocator;
+	auto rtv = g_descriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	rtv.ptr += currentBackBufferIndex * g_heapSize;
+	auto dsv = g_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+
+	allocator->Reset();
+	g_commandList->Reset(allocator.Get(), nullptr);
+	// clear render target
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		g_commandList->ResourceBarrier(1, &barrier);
+		FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+		g_commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+		g_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	}
+	g_commandList->SetPipelineState(g_pipelineState.Get());
+	g_commandList->SetGraphicsRootSignature(g_rootSignature.Get());
 }
 
 
@@ -547,6 +627,22 @@ void Update()
 	char buffer[500];
 	sprintf_s(buffer, 500, "FPS: %f\n", fps);
 	OutputDebugStringA(buffer);
+
+	// for rendering cube
+	{
+		std::chrono::duration<double, std::milli> totalSecs = now - startPoint;
+		float angle = (float)(90 * totalSecs.count() / 1000);
+		XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
+		g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+
+		XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 0);
+		XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
+		XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
+		g_viewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+
+		float aspectRatio = windowWidth / static_cast<float>(windowHeight);
+		g_projectionMatrix = XMMatrixPerspectiveFovLH(90, aspectRatio, 0.1f, 100.0f);
+	}
 }
 
 LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
