@@ -100,6 +100,10 @@ XMMATRIX g_modelMatrix;
 XMMATRIX g_viewMatrix;
 XMMATRIX g_projectionMatrix;
 
+CD3DX12_VIEWPORT g_viewport;
+D3D12_RECT g_d3d12Rect;
+
+
 
 
 LRESULT CALLBACK wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
@@ -277,7 +281,7 @@ void UpdateBufferResource(
 	}
 }
 
-void ResizeDepthBuffer(int width, int height, ComPtr<ID3D12Device> device, ComPtr<ID3D12Resource> depthBufferResource, ComPtr<ID3D12DescriptorHeap> devHeap)
+void ResizeDepthBuffer(int width, int height, ComPtr<ID3D12Device> device, ComPtr<ID3D12Resource>& depthBufferResource, ComPtr<ID3D12DescriptorHeap> devHeap)
 {
 	D3D12_CLEAR_VALUE optimizedClearValue = {};
 	optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
@@ -390,8 +394,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	lastTick = std::chrono::high_resolution_clock::now();
 	startPoint = lastTick;
 
-	// upload vertex buffer data
-	ComPtr<ID3D12Resource> intermediateVertexBuffer;
+	
 	// create copy list/ allocator/ queue for upload
 	ComPtr<ID3D12CommandAllocator> tempAllocator = CreateCommandAllocator(g_device, D3D12_COMMAND_LIST_TYPE_COPY);
 	ComPtr<ID3D12GraphicsCommandList2> inList;
@@ -399,6 +402,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	ComPtr<ID3D12CommandQueue> tempQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_COPY);
 	ComPtr<ID3D12Fence> tempFence = CreateFence(g_device);
 
+	// upload vertex buffer data
+	ComPtr<ID3D12Resource> intermediateVertexBuffer;
 	UpdateBufferResource(inList, &g_vertexBuffer, &intermediateVertexBuffer, _countof(g_Vertices), sizeof(VertexPosColor), g_Vertices, D3D12_RESOURCE_FLAG_NONE, g_device);
 	g_vertexBufferView.BufferLocation = g_vertexBuffer->GetGPUVirtualAddress();
 	g_vertexBufferView.SizeInBytes = sizeof(g_Vertices);
@@ -415,6 +420,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	// create dev heap
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	heapDesc.NumDescriptors = 1;
 	ThrowIfFailed(g_device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&g_dsvHeap)));
 
@@ -425,8 +431,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	ThrowIfFailed(D3DReadFileToBlob(L"PixelShader.cso", &pixelShader));
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+		{"MYPOSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
 	};
 
 	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
@@ -504,7 +510,12 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	tempQueue.Reset();
 	tempFence.Reset();
 
+	g_viewport = CD3DX12_VIEWPORT(0., 0., windowWidth, windowHeight, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
+	g_d3d12Rect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
+
 	ResizeDepthBuffer(windowWidth, windowHeight, g_device, g_depthBuffer, g_dsvHeap);
+
+	g_commandList->Close();
 
 	MSG msg = {};
 	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
@@ -519,25 +530,69 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 void RenderCube()
 {
-	UINT currentBackBufferIndex = g_swapChain->GetCurrentBackBufferIndex();
-	ComPtr<ID3D12Resource> backBuffer = g_backBuffers[currentBackBufferIndex];
-	ComPtr<ID3D12CommandAllocator> allocator;
+	ComPtr<ID3D12Resource> backBuffer = g_backBuffers[g_currentBackBuffer];
+	ComPtr<ID3D12CommandAllocator> allocator = g_commandAllocators[g_currentBackBuffer];
 	auto rtv = g_descriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	rtv.ptr += currentBackBufferIndex * g_heapSize;
+	rtv.ptr += g_currentBackBuffer * g_heapSize;
 	auto dsv = g_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
 	allocator->Reset();
 	g_commandList->Reset(allocator.Get(), nullptr);
+
 	// clear render target
 	{
 		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		g_commandList->ResourceBarrier(1, &barrier);
-		FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
-		g_commandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+
+		// clear color
+		FLOAT color[4] = { 0.5f, 0.9f, 0.1f, 1 };
+		g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+
 		g_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	}
+
 	g_commandList->SetPipelineState(g_pipelineState.Get());
 	g_commandList->SetGraphicsRootSignature(g_rootSignature.Get());
+
+	g_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	g_commandList->IASetIndexBuffer(&g_indexBufferView);
+	g_commandList->IASetVertexBuffers(0, 1, &g_vertexBufferView);
+
+	g_commandList->RSSetViewports(1, &g_viewport);
+	g_commandList->RSSetScissorRects(1, &g_d3d12Rect);
+
+	g_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+	// update MVP matrixs
+	XMMATRIX mvpMatrix = XMMatrixMultiply(g_modelMatrix, g_viewMatrix);
+	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projectionMatrix);
+	g_commandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
+
+	g_commandList->DrawIndexedInstanced(_countof(g_Indicies), 1, 0, 0, 0);
+
+	// present
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		g_commandList->ResourceBarrier(1, &barrier);
+		g_commandList->Close();
+
+		ID3D12CommandList* lists[] = {g_commandList.Get()};
+		g_commandQueue->ExecuteCommandLists(1, lists);
+		g_commandQueue->Signal(g_fence.Get(), fenceValue);
+		buffersFenceValue[g_currentBackBuffer] = fenceValue;
+		fenceValue++;
+
+		g_swapChain->Present(1, 0);
+
+		g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
+		UINT waitValue = buffersFenceValue[g_currentBackBuffer];
+		if (g_fence->GetCompletedValue() < waitValue)
+		{
+			HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+			g_fence->SetEventOnCompletion(waitValue, hEvent);
+			WaitForSingleObject(hEvent, INFINITE);
+		}
+	}
 }
 
 
@@ -651,7 +706,8 @@ LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_PAINT:
 		Update();
-		RenderCleanColor();
+		RenderCube();
+		//RenderCleanColor();
 		return 0;
 	case WM_DESTROY:
 		PostQuitMessage(0);
