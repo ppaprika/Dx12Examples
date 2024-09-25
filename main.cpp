@@ -62,8 +62,8 @@ static WORD g_Indicies[36] =
 
 
 constexpr int numBackBuffers = 3;
-constexpr int windowWidth = 700;
-constexpr int windowHeight = 700;
+int windowWidth = 700;
+int windowHeight = 700;
 constexpr wchar_t wndClassName[] = L"TryIt";
 
 ComPtr<IDXGIAdapter> g_adapter;
@@ -103,8 +103,9 @@ XMMATRIX g_projectionMatrix;
 CD3DX12_VIEWPORT g_viewport;
 D3D12_RECT g_d3d12Rect;
 
+bool g_init = false;
 
-
+float g_fov = 45;
 
 LRESULT CALLBACK wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -517,6 +518,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 	g_commandList->Close();
 
+	g_init = true;
+
 	MSG msg = {};
 	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
 	while(GetMessage(&msg, nullptr, 0, 0))
@@ -595,7 +598,6 @@ void RenderCube()
 	}
 }
 
-
 void RenderCleanColor()
 {
 	// reset command list and command queue
@@ -671,8 +673,6 @@ void RenderCleanColor()
 	}
 }
 
-
-
 void Update()
 {
 	auto now = std::chrono::high_resolution_clock::now();
@@ -681,7 +681,7 @@ void Update()
 	double fps = 1000 / elapsed.count();
 	char buffer[500];
 	sprintf_s(buffer, 500, "FPS: %f\n", fps);
-	OutputDebugStringA(buffer);
+	//OutputDebugStringA(buffer);
 
 	// for rendering cube
 	{
@@ -689,6 +689,7 @@ void Update()
 		float angle = (float)(90 * totalSecs.count() / 1000);
 		XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
 		g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+		//g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(0));
 
 		XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 0);
 		XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
@@ -696,8 +697,20 @@ void Update()
 		g_viewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
 		float aspectRatio = windowWidth / static_cast<float>(windowHeight);
-		g_projectionMatrix = XMMatrixPerspectiveFovLH(90, aspectRatio, 0.1f, 100.0f);
+		g_projectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(g_fov), aspectRatio, 0.1f, 100.0f);
 	}
+}
+
+void Flush()
+{
+	g_commandQueue->Signal(g_fence.Get(), fenceValue);
+	if(g_fence->GetCompletedValue() < fenceValue)
+	{
+		HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+		g_fence->SetEventOnCompletion(fenceValue, hEvent);
+		WaitForSingleObject(hEvent, INFINITE);
+	}
+	fenceValue++;
 }
 
 LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -709,10 +722,56 @@ LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		RenderCube();
 		//RenderCleanColor();
 		return 0;
+	case WM_MOUSEWHEEL:
+		{
+			float zDelta = ((int)(short)HIWORD(wParam)) / (float)WHEEL_DELTA;
+			g_fov += zDelta;
+			g_fov = clamp(g_fov, 12.0f, 90.0f);
+
+			char buffer[500];
+			sprintf_s(buffer, "g_fov: %f \n", g_fov);
+			OutputDebugStringA(buffer);
+			break;
+		}
+	case WM_SIZE:
+		{
+			if(g_init)
+			{
+				UINT width = LOWORD(lParam) == 0 ? 1 : LOWORD(lParam);
+				UINT height = HIWORD(lParam) == 0 ? 1 : HIWORD(lParam);
+
+				char buffer[500];
+				sprintf_s(buffer, "width: %d, height: %d \n", width, height);
+				OutputDebugStringA(buffer);
+
+				windowHeight = height;
+				windowWidth = width;
+				g_viewport = CD3DX12_VIEWPORT(0., 0., windowWidth, windowHeight, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
+				// resize RTVs
+				OutputDebugString(L"Flush. \n");
+				Flush();
+				// Resize DSV
+				OutputDebugString(L"Resize Depth Buffer. \n");
+				ResizeDepthBuffer(windowWidth, windowHeight, g_device, g_depthBuffer, g_dsvHeap);
+				OutputDebugString(L"Reset BackBuffer array. \n");
+				for(int i = 0; i < numBackBuffers; ++i)
+				{
+					g_backBuffers[i].Reset();
+				}
+				OutputDebugString(L"Resize BackBuffers. \n");
+				g_swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
+				OutputDebugString(L"Update RenderTarget. \n");
+				updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+				g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
+			}
+		break;
+		}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		return 0;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
+
+	return 0;
 }
