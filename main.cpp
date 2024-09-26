@@ -713,6 +713,11 @@ void Flush()
 	fenceValue++;
 }
 
+void Quit()
+{
+	Flush();
+}
+
 LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
@@ -747,26 +752,24 @@ LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				windowHeight = height;
 				windowWidth = width;
 				g_viewport = CD3DX12_VIEWPORT(0., 0., windowWidth, windowHeight, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
-				// resize RTVs
-				OutputDebugString(L"Flush. \n");
 				Flush();
-				// Resize DSV
-				OutputDebugString(L"Resize Depth Buffer. \n");
+
+				// resize depth buffer
 				ResizeDepthBuffer(windowWidth, windowHeight, g_device, g_depthBuffer, g_dsvHeap);
-				OutputDebugString(L"Reset BackBuffer array. \n");
+
+				// resize render target view
 				for(int i = 0; i < numBackBuffers; ++i)
 				{
 					g_backBuffers[i].Reset();
 				}
-				OutputDebugString(L"Resize BackBuffers. \n");
 				g_swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-				OutputDebugString(L"Update RenderTarget. \n");
 				updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 				g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 			}
 		break;
 		}
 	case WM_DESTROY:
+		Quit();
 		PostQuitMessage(0);
 		return 0;
 	default:
