@@ -131,36 +131,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="CommandQueue.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="CommandQueue.h" />
-    <ClCompile Include="Game.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="Helpers.h" />
-    <ClCompile Include="HighResolutionClock.cpp">
+    <ClCompile Include="Project1_main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="RenderCube.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Window.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">True</ExcludedFromBuild>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Application.h" />
-    <ClInclude Include="Events.h" />
-    <ClInclude Include="Game.h" />
-    <ClInclude Include="HighResolutionClock.h" />
-    <ClInclude Include="KeyCodes.h" />
-    <ClInclude Include="RenderCube.h" />
-    <ClInclude Include="Window.h" />
+    <ClCompile Include="Project2_main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\PixelShader.hlsl">
