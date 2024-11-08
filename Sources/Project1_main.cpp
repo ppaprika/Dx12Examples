@@ -17,6 +17,7 @@
 #include <Shlwapi.h>
 #include <D3DX12/d3dx12_pipeline_state_stream.h>
 #include <D3DX12/d3dx12_root_signature.h>
+#include <windowsx.h>
 
 
 #include "Helpers.h"
@@ -108,6 +109,16 @@ bool g_init = false;
 float g_fov = 45;
 
 LRESULT CALLBACK wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+struct MouseTracker
+{
+	bool mouseLeftButtonDown;
+	POINT lastPos;
+	POINT deltaPos;
+} static mouseTracker = { false, {0, 0}, {0,0} };
+
+float currentRotX = 0;
+float currentRotY = 0;
 
 ComPtr<IDXGIAdapter> GetAdapter()
 {
@@ -548,7 +559,7 @@ void RenderCube()
 		g_commandList->ResourceBarrier(1, &barrier);
 
 		// clear color
-		FLOAT color[4] = { 0.5f, 0.9f, 0.1f, 1 };
+		FLOAT color[4] = { 0.f, 0.f, 0.f, 1 };
 		g_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
 
 		g_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
@@ -685,11 +696,18 @@ void Update()
 
 	// for rendering cube
 	{
-		std::chrono::duration<double, std::milli> totalSecs = now - startPoint;
-		float angle = (float)(90 * totalSecs.count() / 1000);
-		XMVECTOR rotationAxis = XMVectorSet(0, 1, 1, 0);
-		g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
-		//g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(0));
+		//std::chrono::duration<double, std::milli> totalSecs = now - startPoint;
+		//float angle = (float)(90 * totalSecs.count() / 1000);
+		//XMVECTOR rotationAxis = XMVectorSet(0, 1, 0, 0);
+		//g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
+
+		// drag to rotate
+		currentRotX += mouseTracker.deltaPos.y / 5;
+		currentRotY += mouseTracker.deltaPos.x / 5;
+
+		g_modelMatrix = XMMatrixRotationAxis({ -1, 0, 0, 0 }, XMConvertToRadians(currentRotX));
+		g_modelMatrix = XMMatrixRotationAxis({ 0, -1, 0, 0 }, XMConvertToRadians(currentRotY)) * g_modelMatrix;
+
 
 		XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 0);
 		XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
@@ -727,47 +745,89 @@ LRESULT wWinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		RenderCube();
 		//RenderCleanColor();
 		return 0;
-	case WM_MOUSEWHEEL:
+	case WM_LBUTTONDOWN:
+	{
+		SetCapture(hWnd);
+		mouseTracker.mouseLeftButtonDown = true;
+		mouseTracker.lastPos.x = GET_X_LPARAM(lParam);
+		mouseTracker.lastPos.y = GET_Y_LPARAM(lParam);
+
+
+		char buffer[] = "Mouse Button Down.\n";
+		OutputDebugStringA(buffer);
+		break;
+	}
+	case WM_MOUSEMOVE:
+	{
+		if(mouseTracker.mouseLeftButtonDown)
 		{
-			float zDelta = ((int)(short)HIWORD(wParam)) / (float)WHEEL_DELTA;
-			g_fov += zDelta;
-			g_fov = clamp(g_fov, 12.0f, 90.0f);
+			mouseTracker.deltaPos.x = GET_X_LPARAM(lParam) - mouseTracker.lastPos.x;
+			mouseTracker.deltaPos.y = GET_Y_LPARAM(lParam) - mouseTracker.lastPos.y;
+
+			mouseTracker.lastPos.x = GET_X_LPARAM(lParam);
+			mouseTracker.lastPos.y = GET_Y_LPARAM(lParam);
+
+			char buffer[200];
+			sprintf_s(buffer, "deltaX:%d  deltaY:%d \n", mouseTracker.deltaPos.x, mouseTracker.deltaPos.y);
+			OutputDebugStringA(buffer);
+		}
+		break;
+	}
+	case WM_LBUTTONUP:
+	{
+		if(GetCapture() == hWnd)
+		{
+			ReleaseCapture();
+		}
+		mouseTracker.mouseLeftButtonDown = false;
+		mouseTracker.deltaPos = { 0, 0 };
+
+
+		char buffer[] = "Mouse Button Up.\n";
+		OutputDebugStringA(buffer);
+		break;
+	}
+	case WM_MOUSEWHEEL:
+	{
+		float zDelta = ((int)(short)HIWORD(wParam)) / (float)WHEEL_DELTA;
+		g_fov += zDelta;
+		g_fov = clamp(g_fov, 12.0f, 90.0f);
+
+		char buffer[500];
+		sprintf_s(buffer, "g_fov: %f \n", g_fov);
+		OutputDebugStringA(buffer);
+		break;
+	}
+	case WM_SIZE:
+	{
+		if(g_init)
+		{
+			UINT width = LOWORD(lParam) == 0 ? 1 : LOWORD(lParam);
+			UINT height = HIWORD(lParam) == 0 ? 1 : HIWORD(lParam);
 
 			char buffer[500];
-			sprintf_s(buffer, "g_fov: %f \n", g_fov);
+			sprintf_s(buffer, "width: %d, height: %d \n", width, height);
 			OutputDebugStringA(buffer);
-			break;
-		}
-	case WM_SIZE:
-		{
-			if(g_init)
+
+			windowHeight = height;
+			windowWidth = width;
+			g_viewport = CD3DX12_VIEWPORT(0., 0., windowWidth, windowHeight, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
+			Flush();
+
+			// resize depth buffer
+			ResizeDepthBuffer(windowWidth, windowHeight, g_device, g_depthBuffer, g_dsvHeap);
+
+			// resize render target view
+			for(int i = 0; i < numBackBuffers; ++i)
 			{
-				UINT width = LOWORD(lParam) == 0 ? 1 : LOWORD(lParam);
-				UINT height = HIWORD(lParam) == 0 ? 1 : HIWORD(lParam);
-
-				char buffer[500];
-				sprintf_s(buffer, "width: %d, height: %d \n", width, height);
-				OutputDebugStringA(buffer);
-
-				windowHeight = height;
-				windowWidth = width;
-				g_viewport = CD3DX12_VIEWPORT(0., 0., windowWidth, windowHeight, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
-				Flush();
-
-				// resize depth buffer
-				ResizeDepthBuffer(windowWidth, windowHeight, g_device, g_depthBuffer, g_dsvHeap);
-
-				// resize render target view
-				for(int i = 0; i < numBackBuffers; ++i)
-				{
-					g_backBuffers[i].Reset();
-				}
-				g_swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-				updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-				g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
+				g_backBuffers[i].Reset();
 			}
-		break;
+			g_swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
+			updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 		}
+	break;
+	}
 	case WM_DESTROY:
 		Quit();
 		PostQuitMessage(0);
