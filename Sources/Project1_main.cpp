@@ -172,28 +172,6 @@ ComPtr<ID3D12CommandQueue> CreateCommandQueue(ComPtr<ID3D12Device> device, D3D12
 	return value;
 }
 
-ComPtr<IDXGISwapChain> CreateSwapChain(HWND hWnd, ComPtr<ID3D12CommandQueue> commandQueue, UINT bufferNum)
-{
-	DXGI_MODE_DESC modeDesc = {};
-	modeDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	DXGI_SWAP_CHAIN_DESC swapChaindesc = {};
-	swapChaindesc.BufferDesc = modeDesc;
-	swapChaindesc.BufferCount = bufferNum;
-	swapChaindesc.OutputWindow = hWnd;
-	swapChaindesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChaindesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChaindesc.SampleDesc = { 1, 0 };
-	swapChaindesc.Windowed = true;
-	swapChaindesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-
-	ComPtr<IDXGIFactory2> factory;
-	ComPtr<IDXGISwapChain> value;
-	ThrowIfFailed(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&factory)));
-	ThrowIfFailed(factory->CreateSwapChain(commandQueue.Get(), &swapChaindesc, &value));
-
-	return value;
-}
 
 ComPtr<ID3D12CommandAllocator> CreateCommandAllocator(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type)
 {
@@ -342,9 +320,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	}
 #endif
 
-
-	Window window(wWinProc, hInstance, wndClassName, L"WindowOne", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nCmdShow);
-
 	// get adapter
 	g_adapter = GetAdapter();
 
@@ -354,9 +329,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	// create command queue
 	g_commandQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-	// create swap chain
-	ComPtr<IDXGISwapChain> tempChain = CreateSwapChain(window.GetWindow(), g_commandQueue, numBackBuffers);
-	ThrowIfFailed(tempChain.As(&g_swapChain));
 
 	// create command allocator
 	for(int i = 0; i < numBackBuffers; ++i)
@@ -367,11 +339,30 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	// create command list
 	g_commandList = CreateCommandList(g_commandAllocators[0], g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-	// create descriptor
-	g_descriptorHeap = CreateDescriptorHeap(g_device, numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	CreateWindowParams Params = {};
+	Params.winProc = wWinProc;
+	Params.hInstance = hInstance;
+	Params.wndClassName = wndClassName;
+	Params.wndName = L"WindowOne";
+	Params.dwStyle = WS_OVERLAPPEDWINDOW;
+	Params.x = CW_USEDEFAULT;
+	Params.y = CW_USEDEFAULT;
+	Params.nWidth = windowWidth;
+	Params.nHeight = windowHeight;
+	Params.nCmdShow = nCmdShow;
+	Params.device = g_device;
+	Params.queue = g_commandQueue;
+	Params.numOfBackBuffers = numBackBuffers;
+	Window window(Params);
 
-	// create rt
-	updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	g_swapChain = window._swapChain;
+	g_descriptorHeap = window._descriptorHeap;
+	g_heapSize = window._heapSize;
+	for(int i = 0; i < numBackBuffers; ++i)
+	{
+		g_backBuffers[i] = window._backBuffers[i];
+	}
+
 
 	// create fence
 	g_fence = CreateFence(g_device);

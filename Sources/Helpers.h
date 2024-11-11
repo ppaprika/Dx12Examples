@@ -4,6 +4,8 @@
 #include <exception>
 #include <iostream>
 #include <Windows.h>
+#include <wrl/client.h>
+#include <D3DX12/d3d12.h>
 
 inline void ThrowIfFailed(HRESULT hr)
 {

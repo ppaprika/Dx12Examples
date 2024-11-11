@@ -24,7 +24,6 @@ CommandList::~CommandList()
 	}
 	_commandList.Reset();
 	_commandQueue.Reset();
-	_fence.Reset();
 	_device.Reset();
 }
 

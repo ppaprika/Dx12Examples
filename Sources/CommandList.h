@@ -26,7 +26,6 @@ private:
 	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> _commandAllocators;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> _commandList;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> _commandQueue;
-	Microsoft::WRL::ComPtr<ID3D12Fence> _fence;
 
 	// from outside
 	Microsoft::WRL::ComPtr<ID3D12Device> _device;
