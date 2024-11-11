@@ -14,7 +14,7 @@ void Game::Update()
 	}
 }
 
-void Game::InitWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
+void Game::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
 {
 	_hwnd = InHwnd;
 	_message = InMessage;

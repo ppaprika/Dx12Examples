@@ -140,6 +140,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Sources\RenderCube.cpp" />
+    <ClCompile Include="Sources\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\PixelShader.hlsl">
@@ -156,6 +157,7 @@
     <ClInclude Include="Sources\Game.h" />
     <ClInclude Include="Sources\Helpers.h" />
     <ClInclude Include="Sources\RenderCube.h" />
+    <ClInclude Include="Sources\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

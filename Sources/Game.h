@@ -19,7 +19,7 @@ public:
 	virtual void RButtonUp() {}
 	virtual void MouseMove() {}
 
-	virtual void InitWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam);
+	virtual void WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam);
 
 	void SetShowFps(bool NewShowFps) { _showFps = NewShowFps; }
 private:

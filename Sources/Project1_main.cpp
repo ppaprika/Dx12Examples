@@ -21,6 +21,8 @@
 
 
 #include "Helpers.h"
+#include "CommandList.h"
+#include "Window.h"
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
@@ -341,34 +343,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 #endif
 
 
-	// register window
-	WNDCLASSW windowClass = {};
-
-	windowClass.style = CS_DBLCLKS | CS_VREDRAW | CS_HREDRAW;
-	windowClass.lpfnWndProc = wWinProc;
-	windowClass.hInstance = hInstance;
-	windowClass.lpszClassName = wndClassName;
-
-	if (!RegisterClassW(&windowClass))
-	{
-		MessageBox(nullptr, L"Failed to register window class!", L"Error", MB_ICONERROR);
-		return 0;
-	}
-
-	// create window
-	HWND hWnd = CreateWindowW(wndClassName, L"WindowOne", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nullptr, nullptr, hInstance, nullptr);
-
-	if (hWnd == nullptr)
-	{
-		DWORD error = GetLastError();
-		wchar_t errorMsg[256];
-		swprintf_s(errorMsg, L"CreateWindowW failed with error %lu", error);
-		MessageBox(nullptr, errorMsg, L"Error", MB_ICONERROR);
-		return 0;
-	}
-
-	// Show window
-	ShowWindow(hWnd, nCmdShow);
+	Window window(wWinProc, hInstance, wndClassName, L"WindowOne", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nCmdShow);
 
 	// get adapter
 	g_adapter = GetAdapter();
@@ -380,7 +355,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	g_commandQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	// create swap chain
-	ComPtr<IDXGISwapChain> tempChain = CreateSwapChain(hWnd, g_commandQueue, numBackBuffers);
+	ComPtr<IDXGISwapChain> tempChain = CreateSwapChain(window.GetWindow(), g_commandQueue, numBackBuffers);
 	ThrowIfFailed(tempChain.As(&g_swapChain));
 
 	// create command allocator
@@ -408,22 +383,18 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 	
 	// create copy list/ allocator/ queue for upload
-	ComPtr<ID3D12CommandAllocator> tempAllocator = CreateCommandAllocator(g_device, D3D12_COMMAND_LIST_TYPE_COPY);
-	ComPtr<ID3D12GraphicsCommandList2> inList;
-	CreateCommandList(tempAllocator, g_device, D3D12_COMMAND_LIST_TYPE_COPY).As(&inList);
-	ComPtr<ID3D12CommandQueue> tempQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_COPY);
-	ComPtr<ID3D12Fence> tempFence = CreateFence(g_device);
+	CommandList List(g_device, D3D12_COMMAND_LIST_TYPE_COPY, 1);
 
 	// upload vertex buffer data
 	ComPtr<ID3D12Resource> intermediateVertexBuffer;
-	UpdateBufferResource(inList, &g_vertexBuffer, &intermediateVertexBuffer, _countof(g_Vertices), sizeof(VertexPosColor), g_Vertices, D3D12_RESOURCE_FLAG_NONE, g_device);
+	UpdateBufferResource(List.GetCommansList(), &g_vertexBuffer, &intermediateVertexBuffer, _countof(g_Vertices), sizeof(VertexPosColor), g_Vertices, D3D12_RESOURCE_FLAG_NONE, g_device);
 	g_vertexBufferView.BufferLocation = g_vertexBuffer->GetGPUVirtualAddress();
 	g_vertexBufferView.SizeInBytes = sizeof(g_Vertices);
 	g_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
 
 	// upload index buffer data
 	ComPtr<ID3D12Resource> intermediateIndexBuffer;
-	UpdateBufferResource(inList, &g_indexBuffer, &intermediateIndexBuffer, _countof(g_Indicies), sizeof(WORD), g_Indicies, D3D12_RESOURCE_FLAG_NONE, g_device);
+	UpdateBufferResource(List.GetCommansList(), &g_indexBuffer, &intermediateIndexBuffer, _countof(g_Indicies), sizeof(WORD), g_Indicies, D3D12_RESOURCE_FLAG_NONE, g_device);
 	g_indexBufferView.BufferLocation = g_indexBuffer->GetGPUVirtualAddress();
 	g_indexBufferView.SizeInBytes = sizeof(g_Indicies);
 	g_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
@@ -505,22 +476,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&g_pipelineState)));
 
 	// do upload and wait for fence value
-	inList->Close();
-	ID3D12CommandList* uploadList[] = { inList.Get() };
-
-	tempQueue->ExecuteCommandLists(1, uploadList);
-	tempQueue->Signal(tempFence.Get(), 1);
-	if(tempFence->GetCompletedValue() != 1)
-	{
-		HANDLE uploadEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		tempFence->SetEventOnCompletion(1, uploadEvent);
-		WaitForSingleObject(uploadEvent, DWORD_MAX);
-	}
-
-	inList.Reset();
-	tempAllocator.Reset();
-	tempQueue.Reset();
-	tempFence.Reset();
+	List.Execute();
+	List.SingleAndWait(g_fence, fenceValue);
+	fenceValue++;
 
 	g_viewport = CD3DX12_VIEWPORT(0., 0., windowWidth, windowHeight, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
 	g_d3d12Rect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
