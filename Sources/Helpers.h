@@ -34,3 +34,10 @@ inline void ShowLastError()
 	std::cerr << "Error Message: " << (char*)messageBuffer << std::endl;
 	LocalFree(messageBuffer);
 }
+
+// Clamp a value between a min and max range.
+template<typename T>
+constexpr const T& clamp(const T& val, const T& min, const T& max)
+{
+	return val < min ? min : val > max ? max : val;
+}

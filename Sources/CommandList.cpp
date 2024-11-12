@@ -34,7 +34,7 @@ void CommandList::Execute()
 	_commandQueue->ExecuteCommandLists(1, lists);
 }
 
-void CommandList::SingleAndWait(Microsoft::WRL::ComPtr<ID3D12Fence> fence, UINT fenceValue)
+void CommandList::SingleAndWait(ComPtr<ID3D12Fence> fence, UINT fenceValue)
 {
 	_commandQueue->Signal(fence.Get(), fenceValue);
 	if(fence->GetCompletedValue() < fenceValue)

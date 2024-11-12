@@ -20,20 +20,17 @@
 #include <windowsx.h>
 
 
+#include "Application.h"
 #include "Helpers.h"
 #include "CommandList.h"
 #include "Window.h"
+#include "Game.h"
+#include "RenderCube.h"
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
 
 
-// Clamp a value between a min and max range.
-template<typename T>
-constexpr const T& clamp(const T& val, const T& min, const T& max)
-{
-	return val < min ? min : val > max ? max : val;
-}
 
 // Vertex data for a colored cube.
 struct VertexPosColor
@@ -320,25 +317,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	}
 #endif
 
-	// get adapter
-	g_adapter = GetAdapter();
-
-	// create device
-	g_device = CreateDevice(g_adapter);
-
-	// create command queue
-	g_commandQueue = CreateCommandQueue(g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-
-
-	// create command allocator
-	for(int i = 0; i < numBackBuffers; ++i)
-	{
-		g_commandAllocators[i] = CreateCommandAllocator(g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-	}
-
-	// create command list
-	g_commandList = CreateCommandList(g_commandAllocators[0], g_device, D3D12_COMMAND_LIST_TYPE_DIRECT);
-
 	CreateWindowParams Params = {};
 	Params.winProc = wWinProc;
 	Params.hInstance = hInstance;
@@ -350,23 +328,43 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	Params.nWidth = windowWidth;
 	Params.nHeight = windowHeight;
 	Params.nCmdShow = nCmdShow;
-	Params.device = g_device;
-	Params.queue = g_commandQueue;
 	Params.numOfBackBuffers = numBackBuffers;
-	Window window(Params);
 
-	g_swapChain = window._swapChain;
-	g_descriptorHeap = window._descriptorHeap;
-	g_heapSize = window._heapSize;
+	std::shared_ptr<Application> App = Application::GetApplication();
+	std::shared_ptr<RenderCube> PureGame = std::make_shared<RenderCube>();
+	App->Run(PureGame, &Params);
+
+	// get adapter
+	g_adapter = App->GetAdapter();
+
+	// create device
+	g_device = App->GetDevice();
+
+	// create command queue
+	g_commandQueue = PureGame->_window->_commandList->_commandQueue;
+
+
+	// create command allocator
 	for(int i = 0; i < numBackBuffers; ++i)
 	{
-		g_backBuffers[i] = window._backBuffers[i];
+		g_commandAllocators[i] = PureGame->_window->_commandList->_commandAllocators[i];
+	}
+
+	// create command list
+	g_commandList = PureGame->_window->_commandList->_commandList;
+
+
+	g_swapChain = PureGame->_window->_swapChain;
+	g_descriptorHeap = PureGame->_window->_descriptorHeap;
+	g_heapSize = PureGame->_window->_heapSize;
+	for(int i = 0; i < numBackBuffers; ++i)
+	{
+		g_backBuffers[i] = PureGame->_window->_backBuffers[i];
 	}
 
 
 	// create fence
-	g_fence = CreateFence(g_device);
-
+	g_fence = PureGame->_window->_fence;
 	g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
 
 	lastTick = std::chrono::high_resolution_clock::now();
@@ -481,7 +479,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	g_init = true;
 
 	MSG msg = {};
-	//while (PeekMessage(&msg, nullptr, 0, 0, 1))
 	while(GetMessage(&msg, nullptr, 0, 0))
 	{
 		TranslateMessage(&msg);
@@ -645,11 +642,6 @@ void Update()
 
 	// for rendering cube
 	{
-		//std::chrono::duration<double, std::milli> totalSecs = now - startPoint;
-		//float angle = (float)(90 * totalSecs.count() / 1000);
-		//XMVECTOR rotationAxis = XMVectorSet(0, 1, 0, 0);
-		//g_modelMatrix = XMMatrixRotationAxis(rotationAxis, XMConvertToRadians(angle));
-
 		// drag to rotate
 		currentRotX += mouseTracker.deltaPos.y / 5;
 		currentRotY += mouseTracker.deltaPos.x / 5;

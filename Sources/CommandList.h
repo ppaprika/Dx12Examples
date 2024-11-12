@@ -3,18 +3,20 @@
 #include <D3DX12/d3d12.h>
 #include <wrl/client.h>
 
+using Microsoft::WRL::ComPtr;
+
 class CommandList
 {
 public:
-	CommandList(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type, int numOfAllocators);
+	CommandList(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type, int numOfAllocators);
 	~CommandList();
 
 	void Execute();
-	void SingleAndWait(Microsoft::WRL::ComPtr<ID3D12Fence> fence, UINT fenceValue);
+	void SingleAndWait(ComPtr<ID3D12Fence> fence, UINT fenceValue);
 
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> GetCommansList() { return _commandList; }
+	ComPtr<ID3D12GraphicsCommandList2> GetCommansList() { return _commandList; }
 
-private:
+public:
 	void InitCommandQueue();
 	void InitAllocators();
 	void InitCommandList();
@@ -23,10 +25,10 @@ private:
 	int _numOfAllocators;
 
 	// owned by this
-	std::vector<Microsoft::WRL::ComPtr<ID3D12CommandAllocator>> _commandAllocators;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> _commandList;
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue> _commandQueue;
+	std::vector<ComPtr<ID3D12CommandAllocator>> _commandAllocators;
+	ComPtr<ID3D12GraphicsCommandList2> _commandList;
+	ComPtr<ID3D12CommandQueue> _commandQueue;
 
 	// from outside
-	Microsoft::WRL::ComPtr<ID3D12Device> _device;
+	ComPtr<ID3D12Device> _device;
 };
