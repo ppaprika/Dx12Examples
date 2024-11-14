@@ -2,6 +2,7 @@
 
 #include <d3dcompiler.h>
 #include <windowsx.h>
+#include <D3DX12/d3dx12_barriers.h>
 #include <D3DX12/d3dx12_pipeline_state_stream.h>
 #include <D3DX12/d3dx12_root_signature.h>
 
@@ -125,6 +126,8 @@ void RenderCube::Init()
 	ComPtr<ID3D12Device2> device2;
 	ThrowIfFailed(device.As(&device2));
 	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&_pipelineState)));
+
+	_init = true;
 }
 
 void RenderCube::Update()
@@ -150,11 +153,101 @@ void RenderCube::Update()
 void RenderCube::Render()
 {
 	Game::Render();
+
+	UINT numBackBuffers = _window->_numOfBackBuffers;
+	UINT windowWidth = _window->GetWidth();
+	UINT windowHeight = _window->GetHeight();
+	std::vector<ComPtr<ID3D12Resource>>& backBuffers = _window->_backBuffers;
+	ComPtr<IDXGISwapChain3> swapChain = _window->_swapChain;
+	ComPtr<ID3D12Device> device = GetDevice();
+	ComPtr<ID3D12DescriptorHeap> descriptorHeap = _window->_descriptorHeap;
+	UINT& currentBackBuffer = _window->_currentBackBuffer;
+	int heapSize = _window->_heapSize;
+	ComPtr<ID3D12DescriptorHeap> dsvHeap = _window->_dsvHeap;
+	ComPtr<ID3D12GraphicsCommandList2> commandList = _window->_commandList->GetCommansList();
+	std::vector<ComPtr<ID3D12CommandAllocator>>& commandAllocators = _window->_commandList->_commandAllocators;
+	ComPtr<ID3D12CommandQueue> commandQueue = _window->_commandList->_commandQueue;
+	ComPtr<ID3D12Fence> fence = _window->_fence;
+	UINT& fenceValue = _window->_fenceValue;
+	std::vector<UINT>& buffersFenceValue = _window->_waitingValue;
+	
+
+	CD3DX12_VIEWPORT& viewport = _window->_viewport;
+	D3D12_RECT& d3d12Rect = _window->_d3d12Rect;
+
+
+	ComPtr<ID3D12Resource> backBuffer = backBuffers[currentBackBuffer];
+	ComPtr<ID3D12CommandAllocator> allocator = commandAllocators[currentBackBuffer];
+	auto rtv = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	rtv.ptr += currentBackBuffer * heapSize;
+	auto dsv = dsvHeap->GetCPUDescriptorHandleForHeapStart();
+
+	allocator->Reset();
+	commandList->Reset(allocator.Get(), nullptr);
+
+	// clear render target
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		commandList->ResourceBarrier(1, &barrier);
+
+		// clear color
+		FLOAT color[4] = { 0.f, 0.f, 0.f, 1 };
+		commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+
+		commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	}
+
+	commandList->SetPipelineState(_pipelineState.Get());
+	commandList->SetGraphicsRootSignature(_rootSignature.Get());
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	commandList->IASetIndexBuffer(&_indexBufferView);
+	commandList->IASetVertexBuffers(0, 1, &_vertexBufferView);
+
+	commandList->RSSetViewports(1, &viewport);
+	commandList->RSSetScissorRects(1, &d3d12Rect);
+
+	commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+	// update MVP matrixs
+	XMMATRIX mvpMatrix = XMMatrixMultiply(g_modelMatrix, g_viewMatrix);
+	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projectionMatrix);
+	commandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
+
+	commandList->DrawIndexedInstanced(_countof(_indicies), 1, 0, 0, 0);
+
+	// present
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+		commandList->ResourceBarrier(1, &barrier);
+		commandList->Close();
+
+		ID3D12CommandList* lists[] = { commandList.Get() };
+		commandQueue->ExecuteCommandLists(1, lists);
+		commandQueue->Signal(fence.Get(), fenceValue);
+		buffersFenceValue[currentBackBuffer] = fenceValue;
+		fenceValue++;
+
+		swapChain->Present(1, 0);
+
+		currentBackBuffer = swapChain->GetCurrentBackBufferIndex();
+		UINT waitValue = buffersFenceValue[currentBackBuffer];
+		if (fence->GetCompletedValue() < waitValue)
+		{
+			HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+			fence->SetEventOnCompletion(waitValue, hEvent);
+			WaitForSingleObject(hEvent, INFINITE);
+		}
+	}
 }
 
 LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
 {
-	Game::WinProc(InHwnd, InMessage, InWParam, InLParam);
+	if(!_init)
+	{
+		return Game::WinProc(InHwnd, InMessage, InWParam, InLParam);
+	}
+	
 
 	HWND hWnd = _window->GetWindow();
 
@@ -162,7 +255,7 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 	{
 	case WM_PAINT:
 		Update();
-		RenderCube();
+		Render();
 		//RenderCleanColor();
 		return 0;
 	case WM_LBUTTONDOWN:
@@ -222,6 +315,18 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 	{
 		if (_init)
 		{
+			UINT numBackBuffers = _window->_numOfBackBuffers;
+			UINT windowWidth = _window->GetWidth();
+			UINT windowHeight = _window->GetHeight();
+			std::vector<ComPtr<ID3D12Resource>>& backBuffers = _window->_backBuffers;
+			ComPtr<IDXGISwapChain3> swapChain = _window->_swapChain;
+			ComPtr<ID3D12Device> device = GetDevice();
+			ComPtr<ID3D12DescriptorHeap> descriptorHeap = _window->_descriptorHeap;
+			UINT& currentBackBuffer = _window->_currentBackBuffer;
+
+
+
+
 			UINT width = LOWORD(InLParam) == 0 ? 1 : LOWORD(InLParam);
 			UINT height = HIWORD(InLParam) == 0 ? 1 : HIWORD(InLParam);
 
@@ -235,7 +340,7 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 			_window->SetWidth(width);
 
 			_window->InitViewportAndRect();
-			Flush();
+			_window->Flush();
 
 			// resize depth buffer
 			_window->ResizeDepthBuffer();
@@ -243,19 +348,19 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 			// resize render target view
 			for (int i = 0; i < numBackBuffers; ++i)
 			{
-				g_backBuffers[i].Reset();
+				backBuffers[i].Reset();
 			}
-			g_swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-			updateRenderTarget(g_device, g_swapChain, g_backBuffers, numBackBuffers, g_descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-			g_currentBackBuffer = g_swapChain->GetCurrentBackBufferIndex();
+			swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
+			_window->UpdateRenderTarget(device, swapChain, backBuffers, numBackBuffers, descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, _window->_heapSize);
+			currentBackBuffer = swapChain->GetCurrentBackBufferIndex();
 		}
 		break;
 	}
 	case WM_DESTROY:
-		Quit();
+		//Quit();
 		PostQuitMessage(0);
 		return 0;
 	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
+		return DefWindowProc(hWnd, InMessage, InWParam, InLParam);
 	}
 }

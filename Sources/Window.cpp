@@ -21,13 +21,14 @@ Window::Window(std::shared_ptr<Game> Owner, const CreateWindowParams& Params)
 	_height = Params.nHeight;
 	_numOfBackBuffers = Params.numOfBackBuffers;
 	_heapSize = Owner->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	_currentBackBuffer = 0;
 
 	_window = CreateWindowW(Params.wndClassName, Params.wndName, Params.dwStyle, Params.x, Params.y, Params.nWidth, Params.nHeight, nullptr, nullptr, Params.hInstance, nullptr);
 	if(_window == nullptr)
 	{
 		DWORD error = GetLastError();
 		wchar_t errorMsg[256];
-		swprintf_s(errorMsg, L"CreateWindowW failed with error %lu", error);
+		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error, 0, errorMsg, 256, nullptr);
 		MessageBox(nullptr, errorMsg, L"Error", MB_ICONERROR);
 		ExitProcess(1);
 	}

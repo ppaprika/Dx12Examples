@@ -79,7 +79,7 @@ LRESULT Game::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLPa
 	//	return DefWindowProc(InHwnd, InMessage, InWParam, InLParam);
 	//}
 
-	return 0;
+	return DefWindowProc(InHwnd, InMessage, InWParam, InLParam);
 }
 
 ComPtr<ID3D12Device> Game::GetDevice()

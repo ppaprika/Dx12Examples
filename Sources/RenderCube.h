@@ -46,4 +46,6 @@ private:
 
 	ComPtr<ID3D12RootSignature> _rootSignature;
 	ComPtr<ID3D12PipelineState> _pipelineState;
+
+	bool _init = false;
 };
