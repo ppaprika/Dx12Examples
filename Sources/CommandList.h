@@ -1,9 +1,24 @@
 #pragma once
+#include <functional>
+#include <memory>
 #include <vector>
 #include <D3DX12/d3d12.h>
 #include <wrl/client.h>
 
 using Microsoft::WRL::ComPtr;
+
+struct DrawWindowParams
+{
+	ComPtr<ID3D12PipelineState> PSO = nullptr;
+	ComPtr<ID3D12RootSignature> RootSignature = nullptr;
+
+	D3D12_VERTEX_BUFFER_VIEW VertexBufferView = {};
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
+
+	SIZE_T DrawNum = 0;
+
+	std::function<void(ComPtr<ID3D12GraphicsCommandList2>)> SetRootConstant;
+};
 
 class CommandList
 {
@@ -15,6 +30,8 @@ public:
 	void SingleAndWait(ComPtr<ID3D12Fence> fence, UINT fenceValue);
 
 	ComPtr<ID3D12GraphicsCommandList2> GetCommansList() { return _commandList; }
+
+	void DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowParams& Params);
 
 public:
 	void InitCommandQueue();

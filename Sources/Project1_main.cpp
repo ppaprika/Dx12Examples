@@ -3,21 +3,12 @@
 #include <D3DX12/d3dx12_core.h>
 #include <D3DX12/d3dx12_resource_helpers.h>
 
-#include <chrono>
-#include <corecrt_wstdio.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <dxgi.h>
-#include <dxgi1_3.h>
 #include <wrl/client.h>
-#include <dwmapi.h>
-#include <dxgi1_4.h>
 #include <intsafe.h>
-#include <D3DX12/d3dx12_barriers.h>
 #include <Shlwapi.h>
-#include <D3DX12/d3dx12_pipeline_state_stream.h>
-#include <D3DX12/d3dx12_root_signature.h>
-#include <windowsx.h>
 
 
 #include "Application.h"
@@ -59,7 +50,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	Params.dwStyle = WS_OVERLAPPEDWINDOW;
 	Params.x = 100;
 	Params.y = 100;
-	Params.nWidth = 600;
+	Params.nWidth = 1000;
 	Params.nHeight = 600;
 	Params.nCmdShow = nCmdShow;
 	Params.numOfBackBuffers = 3;

@@ -69,16 +69,6 @@ LRESULT Game::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLPa
 	_wParam = InWParam;
 	_lParam = InLParam;
 
-	//switch (InMessage)
-	//{
-	//case WM_PAINT:
-	//	Update();
-	//	Render();
-	//	return 0;
-	//default:
-	//	return DefWindowProc(InHwnd, InMessage, InWParam, InLParam);
-	//}
-
 	return DefWindowProc(InHwnd, InMessage, InWParam, InLParam);
 }
 

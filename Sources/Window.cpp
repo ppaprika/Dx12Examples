@@ -66,7 +66,7 @@ void Window::InitViewportAndRect()
 
 void Window::InitDepth()
 {
-	// create dev heap
+	// create dsv heap
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
