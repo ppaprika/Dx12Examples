@@ -40,11 +40,6 @@ Window::Window(std::shared_ptr<Game> Owner, const CreateWindowParams& Params)
 	CreateSwapChain(_window, _commandList->_commandQueue, Params.numOfBackBuffers).As(&_swapChain);
 	_descriptorHeap = CreateDescriptorHeap(Owner->GetDevice(), Params.numOfBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	UpdateRenderTarget(Owner->GetDevice(), _swapChain, _backBuffers, Params.numOfBackBuffers, _descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, _heapSize);
-	_fence = CreateFence(Owner->GetDevice(), _fenceValue);
-	for(int i = 0; i < Params.numOfBackBuffers; ++i)
-	{
-		_waitingValue.push_back(_fenceValue);
-	}
 	_owner = Owner;
 }
 
@@ -126,8 +121,10 @@ void Window::UpdateSize(int width, int height)
 
 void Window::Flush()
 {
-	_commandList->SingleAndWait(_fence, _fenceValue);
-	_fenceValue++;
+	//_commandList->SingleAndWait(_fence, _fenceValue);
+	//_fenceValue++;
+
+	_commandList->SingleAndWait();
 }
 
 ComPtr<IDXGISwapChain> Window::CreateSwapChain(HWND window, ComPtr<ID3D12CommandQueue> queue, int numOfBackBuffers)

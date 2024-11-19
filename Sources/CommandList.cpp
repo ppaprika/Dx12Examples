@@ -17,6 +17,7 @@ CommandList::CommandList(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_COMM
 	InitCommandQueue();
 	InitAllocators();
 	InitCommandList();
+	InitFence();
 }
 
 CommandList::~CommandList()
@@ -37,16 +38,18 @@ void CommandList::Execute()
 	_commandQueue->ExecuteCommandLists(1, lists);
 }
 
-void CommandList::SingleAndWait(ComPtr<ID3D12Fence> fence, UINT fenceValue)
+void CommandList::SingleAndWait()
 {
-	_commandQueue->Signal(fence.Get(), fenceValue);
-	if(fence->GetCompletedValue() < fenceValue)
+	_commandQueue->Signal(_fence.Get(), _fenceValue);
+	if(_fence->GetCompletedValue() < _fenceValue)
 	{
 		HANDLE event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		fence->SetEventOnCompletion(fenceValue, event);
+		_fence->SetEventOnCompletion(_fenceValue, event);
 		WaitForSingleObject(event, DWORD_MAX);
 	}
+	_fenceValue++;
 }
+
 
 void CommandList::DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowParams& Params)
 {
@@ -58,10 +61,6 @@ void CommandList::DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowP
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap = Window->_descriptorHeap;
 	SIZE_T heapSize = Window->_heapSize;
 	ComPtr<IDXGISwapChain3> swapChain = Window->_swapChain;
-
-	UINT& fenceValue = Window->_fenceValue;
-	ComPtr<ID3D12Fence> fence = Window->_fence;
-	std::vector<UINT>& buffersFenceValue = Window->_waitingValue;
 
 
 	ComPtr<ID3D12Resource> backBuffer = backBuffers[currentBackBuffer];
@@ -108,18 +107,18 @@ void CommandList::DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowP
 
 		ID3D12CommandList* lists[] = { _commandList.Get() };
 		_commandQueue->ExecuteCommandLists(1, lists);
-		_commandQueue->Signal(fence.Get(), fenceValue);
-		buffersFenceValue[currentBackBuffer] = fenceValue;
-		fenceValue++;
+		_commandQueue->Signal(_fence.Get(), _fenceValue);
+		_waitingValue[currentBackBuffer] = _fenceValue;
+		_fenceValue++;
 
 		swapChain->Present(1, 0);
 
 		currentBackBuffer = swapChain->GetCurrentBackBufferIndex();
-		UINT waitValue = buffersFenceValue[currentBackBuffer];
-		if (fence->GetCompletedValue() < waitValue)
+		UINT waitValue = _waitingValue[currentBackBuffer];
+		if (_fence->GetCompletedValue() < waitValue)
 		{
 			HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-			fence->SetEventOnCompletion(waitValue, hEvent);
+			_fence->SetEventOnCompletion(waitValue, hEvent);
 			WaitForSingleObject(hEvent, INFINITE);
 		}
 	}
@@ -151,4 +150,13 @@ void CommandList::InitCommandList()
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> tempList;
 	ThrowIfFailed(_device->CreateCommandList(0, _type, _commandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&tempList)));
 	tempList.As(&_commandList);
+}
+
+void CommandList::InitFence()
+{
+	ThrowIfFailed(_device->CreateFence(_fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&_fence)));
+	for(int i = 0; i < _numOfAllocators; ++i)
+	{
+		_waitingValue.push_back(_fenceValue);
+	}
 }

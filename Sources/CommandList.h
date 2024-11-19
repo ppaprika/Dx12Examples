@@ -27,7 +27,7 @@ public:
 	~CommandList();
 
 	void Execute();
-	void SingleAndWait(ComPtr<ID3D12Fence> fence, UINT fenceValue);
+	void SingleAndWait();
 
 	ComPtr<ID3D12GraphicsCommandList2> GetCommansList() { return _commandList; }
 
@@ -37,6 +37,7 @@ public:
 	void InitCommandQueue();
 	void InitAllocators();
 	void InitCommandList();
+	void InitFence();
 
 	D3D12_COMMAND_LIST_TYPE _type;
 	int _numOfAllocators;
@@ -45,6 +46,10 @@ public:
 	std::vector<ComPtr<ID3D12CommandAllocator>> _commandAllocators;
 	ComPtr<ID3D12GraphicsCommandList2> _commandList;
 	ComPtr<ID3D12CommandQueue> _commandQueue;
+
+	ComPtr<ID3D12Fence> _fence;
+	UINT _fenceValue = 0;
+	std::vector<UINT> _waitingValue;
 
 	// from outside
 	ComPtr<ID3D12Device> _device;

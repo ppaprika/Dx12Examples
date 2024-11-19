@@ -59,8 +59,6 @@ public:
 	std::weak_ptr<Game> _owner;
 
 public:
-	UINT _fenceValue = 0;
-	std::vector<UINT> _waitingValue;
 
 	UINT _numOfBackBuffers;
 	UINT _currentBackBuffer;
@@ -69,7 +67,6 @@ public:
 	ComPtr<IDXGISwapChain3> _swapChain;
 	std::vector<ComPtr<ID3D12Resource>> _backBuffers;
 	ComPtr<ID3D12DescriptorHeap> _descriptorHeap;
-	ComPtr<ID3D12Fence> _fence;
 	SIZE_T _heapSize;
 
 	ComPtr<ID3D12Resource> _depthBuffer;

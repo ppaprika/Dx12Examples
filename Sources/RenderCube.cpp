@@ -56,8 +56,9 @@ void RenderCube::Init()
 
 	// do upload and wait for fence value
 	List.Execute();
-	List.SingleAndWait(_window->_fence, _window->_fenceValue);
-	_window->_fenceValue++;
+	//List.SingleAndWait(_window->_fence, _window->_fenceValue);
+	//_window->_fenceValue++;
+	List.SingleAndWait();
 
 	ComPtr<ID3DBlob> vertexShader;
 	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShader));
