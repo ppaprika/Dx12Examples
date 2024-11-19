@@ -7,6 +7,7 @@
 
 #include "Application.h"
 #include "Helpers.h"
+#include "UploadBuffer.h"
 #include "Window.h"
 
 std::weak_ptr<Game> Game::GlobalGame;
@@ -37,6 +38,7 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 {
 	_app = App;
 	GlobalGame = shared_from_this();
+	_uploadBuffer = std::make_unique<UploadBuffer>(App->GetDevice());
 
 	if(Params)
 	{

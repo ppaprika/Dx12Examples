@@ -141,6 +141,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Sources\RenderCube.cpp" />
+    <ClCompile Include="Sources\UploadBuffer.cpp" />
     <ClCompile Include="Sources\Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -156,9 +157,11 @@
   <ItemGroup>
     <ClInclude Include="Sources\Application.h" />
     <ClInclude Include="Sources\CommandList.h" />
+    <ClInclude Include="Sources\Defines.h" />
     <ClInclude Include="Sources\Game.h" />
     <ClInclude Include="Sources\Helpers.h" />
     <ClInclude Include="Sources\RenderCube.h" />
+    <ClInclude Include="Sources\UploadBuffer.h" />
     <ClInclude Include="Sources\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

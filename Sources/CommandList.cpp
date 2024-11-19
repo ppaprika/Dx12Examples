@@ -38,6 +38,13 @@ void CommandList::Execute()
 	_commandQueue->ExecuteCommandLists(1, lists);
 }
 
+void CommandList::Reset()
+{
+	_commandList->Close();
+	_commandAllocators[0]->Reset();
+	_commandList->Reset(_commandAllocators[0].Get(), nullptr);
+}
+
 void CommandList::SingleAndWait()
 {
 	_commandQueue->Signal(_fence.Get(), _fenceValue);
@@ -53,6 +60,14 @@ void CommandList::SingleAndWait()
 
 void CommandList::DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowParams& Params)
 {
+	if(Window->_numOfBackBuffers != _numOfAllocators)
+	{
+		char buffer[200];
+		sprintf_s(buffer,200, "Error: Window's back buffer num %d is not equal to CommandList's allocator num %d !\n", Window->_numOfBackBuffers, _numOfAllocators);
+		OutputDebugStringA(buffer);
+		return;
+	}
+
 	CD3DX12_VIEWPORT& viewport = Window->_viewport;
 	D3D12_RECT& d3d12Rect = Window->_d3d12Rect;
 

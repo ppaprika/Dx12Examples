@@ -27,6 +27,7 @@ public:
 	~CommandList();
 
 	void Execute();
+	void Reset();
 	void SingleAndWait();
 
 	ComPtr<ID3D12GraphicsCommandList2> GetCommansList() { return _commandList; }
@@ -40,7 +41,7 @@ public:
 	void InitFence();
 
 	D3D12_COMMAND_LIST_TYPE _type;
-	int _numOfAllocators;
+	UINT _numOfAllocators;
 
 	// owned by this
 	std::vector<ComPtr<ID3D12CommandAllocator>> _commandAllocators;

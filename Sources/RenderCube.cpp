@@ -10,6 +10,7 @@
 #include "Application.h"
 #include "CommandList.h"
 #include "Helpers.h"
+#include "UploadBuffer.h"
 
 RenderCube::VertexPosColor RenderCube::_vertices[8] = {
 	{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
@@ -37,28 +38,21 @@ void RenderCube::Init()
 	Game::Init();
 
 	ComPtr<ID3D12Device> device = _app.lock()->GetDevice();
-	// create copy list/ allocator/ queue for upload
-	CommandList List(device, D3D12_COMMAND_LIST_TYPE_COPY, 1);
 
-	// upload vertex buffer data
-	ComPtr<ID3D12Resource> intermediateVertexBuffer;
-	UpdateBufferResource(List.GetCommansList(), &_vertexBuffer, &intermediateVertexBuffer, _countof(_vertices), sizeof(VertexPosColor), _vertices, D3D12_RESOURCE_FLAG_NONE, device);
-	_vertexBufferView.BufferLocation = _vertexBuffer->GetGPUVirtualAddress();
+
+	//_uploadBuffer->DoUpload(_vertexBuffer, _countof(_vertices), sizeof(_vertices), _vertices, D3D12_RESOURCE_FLAG_NONE);
+	UploadBuffer::Memory memory = _uploadBuffer->Allocation(sizeof(_vertices));
+	memcpy(memory.CPUPtr, _vertices, sizeof(_vertices));
+	_vertexBufferView.BufferLocation = memory.GPUPtr;
 	_vertexBufferView.SizeInBytes = sizeof(_vertices);
 	_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
 
-	// upload index buffer data
-	ComPtr<ID3D12Resource> intermediateIndexBuffer;
-	UpdateBufferResource(List.GetCommansList(), &_indexBuffer, &intermediateIndexBuffer, _countof(_indicies), sizeof(WORD), _indicies, D3D12_RESOURCE_FLAG_NONE, device);
-	_indexBufferView.BufferLocation = _indexBuffer->GetGPUVirtualAddress();
+	//_uploadBuffer->DoUpload(_indexBuffer, _countof(_indicies), sizeof(_indicies), _indicies, D3D12_RESOURCE_FLAG_NONE);
+	memory = _uploadBuffer->Allocation(sizeof(_indicies));
+	memcpy(memory.CPUPtr, _indicies, sizeof(_indicies));
+	_indexBufferView.BufferLocation = memory.GPUPtr;
 	_indexBufferView.SizeInBytes = sizeof(_indicies);
 	_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-
-	// do upload and wait for fence value
-	List.Execute();
-	//List.SingleAndWait(_window->_fence, _window->_fenceValue);
-	//_window->_fenceValue++;
-	List.SingleAndWait();
 
 	ComPtr<ID3DBlob> vertexShader;
 	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShader));

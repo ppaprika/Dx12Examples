@@ -7,6 +7,7 @@
 #include <wrl/client.h>
 
 
+class UploadBuffer;
 class Application;
 class Window;
 struct CreateWindowParams;
@@ -58,4 +59,6 @@ public:
 
 	bool _showFps = true;
 	std::chrono::time_point<std::chrono::steady_clock> _lastTick;
+
+	std::unique_ptr<UploadBuffer> _uploadBuffer;
 };
