@@ -40,14 +40,12 @@ void RenderCube::Init()
 	ComPtr<ID3D12Device> device = _app.lock()->GetDevice();
 
 
-	//_uploadBuffer->DoUpload(_vertexBuffer, _countof(_vertices), sizeof(_vertices), _vertices, D3D12_RESOURCE_FLAG_NONE);
 	UploadBuffer::Memory memory = _uploadBuffer->Allocation(sizeof(_vertices));
 	memcpy(memory.CPUPtr, _vertices, sizeof(_vertices));
 	_vertexBufferView.BufferLocation = memory.GPUPtr;
 	_vertexBufferView.SizeInBytes = sizeof(_vertices);
 	_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
 
-	//_uploadBuffer->DoUpload(_indexBuffer, _countof(_indicies), sizeof(_indicies), _indicies, D3D12_RESOURCE_FLAG_NONE);
 	memory = _uploadBuffer->Allocation(sizeof(_indicies));
 	memcpy(memory.CPUPtr, _indicies, sizeof(_indicies));
 	_indexBufferView.BufferLocation = memory.GPUPtr;
@@ -148,9 +146,6 @@ void RenderCube::Update()
 void RenderCube::Render()
 {
 	Game::Render();
-
-	CD3DX12_VIEWPORT& viewport = _window->_viewport;
-	D3D12_RECT& d3d12Rect = _window->_d3d12Rect;
 
 	DrawWindowParams Params = {};
 	Params.IndexBufferView = _indexBufferView;

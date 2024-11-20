@@ -41,3 +41,27 @@ constexpr const T& clamp(const T& val, const T& min, const T& max)
 {
 	return val < min ? min : val > max ? max : val;
 }
+
+template<typename T>
+T AlignUpWithMask(T value, size_t mask)
+{
+	return static_cast<T>((static_cast<size_t>(value) + mask) & ~mask);
+}
+
+template<typename T>
+T AlignUp(T value, size_t align)
+{
+	return AlignUpWithMask(value, align - 1);
+}
+
+template<typename T>
+T AlignDownWithMask(T value, size_t mask)
+{
+	return static_cast<T>(static_cast<size_t>(value) & ~mask);
+}
+
+template<typename T>
+T AlignDown(T value, size_t align)
+{
+	return AlignDownWithMask(value, align - 1);
+}

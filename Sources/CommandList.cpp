@@ -31,19 +31,19 @@ CommandList::~CommandList()
 	_device.Reset();
 }
 
-void CommandList::Execute()
-{
-	_commandList->Close();
-	ID3D12CommandList* lists[] = { _commandList.Get() };
-	_commandQueue->ExecuteCommandLists(1, lists);
-}
-
-void CommandList::Reset()
-{
-	_commandList->Close();
-	_commandAllocators[0]->Reset();
-	_commandList->Reset(_commandAllocators[0].Get(), nullptr);
-}
+//void CommandList::Execute()
+//{
+//	_commandList->Close();
+//	ID3D12CommandList* lists[] = { _commandList.Get() };
+//	_commandQueue->ExecuteCommandLists(1, lists);
+//}
+//
+//void CommandList::Reset()
+//{
+//	_commandList->Close();
+//	_commandAllocators[0]->Reset();
+//	_commandList->Reset(_commandAllocators[0].Get(), nullptr);
+//}
 
 void CommandList::SingleAndWait()
 {
@@ -84,7 +84,6 @@ void CommandList::DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowP
 	rtv.ptr += currentBackBuffer * heapSize;
 	auto dsv = Window->_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
-	allocator->Reset();
 	_commandList->Reset(allocator.Get(), nullptr);
 
 	// clear render target
@@ -165,6 +164,7 @@ void CommandList::InitCommandList()
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> tempList;
 	ThrowIfFailed(_device->CreateCommandList(0, _type, _commandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&tempList)));
 	tempList.As(&_commandList);
+	_commandList->Close();
 }
 
 void CommandList::InitFence()

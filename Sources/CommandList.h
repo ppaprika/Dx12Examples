@@ -26,11 +26,12 @@ public:
 	CommandList(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type, int numOfAllocators);
 	~CommandList();
 
-	void Execute();
-	void Reset();
+	//void Execute();
+	//void Reset();
+
 	void SingleAndWait();
 
-	ComPtr<ID3D12GraphicsCommandList2> GetCommansList() { return _commandList; }
+	ComPtr<ID3D12GraphicsCommandList2> GetCommandList() { return _commandList; }
 
 	void DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowParams& Params);
 
