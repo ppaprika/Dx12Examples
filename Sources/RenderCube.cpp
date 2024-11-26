@@ -40,15 +40,15 @@ void RenderCube::Init()
 	ComPtr<ID3D12Device> device = _app.lock()->GetDevice();
 
 
-	UploadBuffer::Memory memory = _uploadBuffer->Allocation(sizeof(_vertices));
-	memcpy(memory.CPUPtr, _vertices, sizeof(_vertices));
-	_vertexBufferView.BufferLocation = memory.GPUPtr;
+	vertex_buffer_memory = _uploadBuffer->Allocation(sizeof(_vertices), 64);
+	memcpy(vertex_buffer_memory->cpu_ptr, _vertices, sizeof(_vertices));
+	_vertexBufferView.BufferLocation = vertex_buffer_memory->gpu_ptr;
 	_vertexBufferView.SizeInBytes = sizeof(_vertices);
 	_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
 
-	memory = _uploadBuffer->Allocation(sizeof(_indicies));
-	memcpy(memory.CPUPtr, _indicies, sizeof(_indicies));
-	_indexBufferView.BufferLocation = memory.GPUPtr;
+	index_buffer_memory = _uploadBuffer->Allocation(sizeof(_indicies), 64);
+	memcpy(index_buffer_memory->cpu_ptr, _indicies, sizeof(_indicies));
+	_indexBufferView.BufferLocation = index_buffer_memory->gpu_ptr;
 	_indexBufferView.SizeInBytes = sizeof(_indicies);
 	_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
 

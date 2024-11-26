@@ -51,7 +51,7 @@ T AlignUpWithMask(T value, size_t mask)
 template<typename T>
 T AlignUp(T value, size_t align)
 {
-	return AlignUpWithMask(value, align - 1);
+	return AlignUpWithMask(value, align == 0 ? 0 : align - 1);
 }
 
 template<typename T>
@@ -63,5 +63,5 @@ T AlignDownWithMask(T value, size_t mask)
 template<typename T>
 T AlignDown(T value, size_t align)
 {
-	return AlignDownWithMask(value, align - 1);
+	return AlignDownWithMask(value, align == 0 ? 0 : align - 1);
 }

@@ -12,7 +12,7 @@
 class CommandList;
 using Microsoft::WRL::ComPtr;
 
-class UploadBuffer
+class UploadBuffer : public std::enable_shared_from_this<UploadBuffer>
 {
 	/* old version */
 //private:
@@ -34,32 +34,32 @@ public:
 	struct PageTracker
 	{
 		explicit PageTracker(std::weak_ptr<Page> page, std::weak_ptr<UploadBuffer> buffer)
-			: _trackingPage(std::move(page)), _ownedBuffer(std::move(buffer)) {}
+			: tracking_page_(std::move(page)), owned_buffer_(std::move(buffer)) {}
 
 		~PageTracker();
 
 	private:
-		std::weak_ptr<Page> _trackingPage;
-		std::weak_ptr<UploadBuffer> _ownedBuffer;
+		std::weak_ptr<Page> tracking_page_;
+		std::weak_ptr<UploadBuffer> owned_buffer_;
 	};
 	friend PageTracker;
 
 	struct Memory
 	{
 		Memory(void* cpuPtr, D3D12_GPU_VIRTUAL_ADDRESS gpuPtr, std::shared_ptr<PageTracker> tracker)
-			: CPUPtr(cpuPtr), GPUPtr(gpuPtr), _tracker(std::move(tracker)) {}
+			: cpu_ptr(cpuPtr), gpu_ptr(gpuPtr), tracker_(std::move(tracker)) {}
 
-		void* CPUPtr;
-		D3D12_GPU_VIRTUAL_ADDRESS GPUPtr;
+		void* cpu_ptr;
+		D3D12_GPU_VIRTUAL_ADDRESS gpu_ptr;
 	private:
-		std::shared_ptr<PageTracker> _tracker;
+		std::shared_ptr<PageTracker> tracker_;
 	};
 
 	UploadBuffer(ComPtr<ID3D12Device> device, size_t pageSize = _2MB);
 
 	virtual ~UploadBuffer();
 
-	Memory Allocation(size_t size, size_t alignment = 0);
+	std::shared_ptr<Memory> Allocation(size_t size, size_t alignment = 0);
 
 private:
 	bool TryReleasePage(std::weak_ptr<Page> page);
@@ -68,26 +68,38 @@ private:
 	{
 		Page(size_t size, ComPtr<ID3D12Device> device);
 
-		ComPtr<ID3D12Resource> memoryPage;
+		ComPtr<ID3D12Resource> memory_page;
 
-		std::weak_ptr<PageTracker> trackThisPage;
+		void* cpu_ptr;
+
+		D3D12_GPU_VIRTUAL_ADDRESS gpu_ptr;
+
+		size_t off_set = 0;
+
+		std::weak_ptr<PageTracker> track_this_page;
+
+		size_t page_size;
+
+		void Reset();
+
+		bool HasEnoughSpace(size_t size, size_t alignment);
 	};
 
-	std::deque<std::unique_ptr<Page>> _availablePages;
-	std::vector<std::unique_ptr<Page>> _usedPages;
-	std::weak_ptr<Page> _currentPage;
+	std::deque<std::shared_ptr<Page>> available_pages_;
+	std::vector<std::shared_ptr<Page>> used_pages_;
+	std::weak_ptr<Page> current_page_;
 
-	void* _cpuPtr;
+	//void* cpu_ptr_;
 
-	D3D12_GPU_VIRTUAL_ADDRESS _gpuPtr;
+	//D3D12_GPU_VIRTUAL_ADDRESS gpu_ptr_;
 
-	ComPtr<ID3D12Resource> _buffer;
+	//size_t off_set_ = 0;
 
-	ComPtr<ID3D12Device> _device;
+	ComPtr<ID3D12Resource> buffer_;
 
-	size_t _offSet = 0;
+	ComPtr<ID3D12Device> device_;
 
-	size_t _pageSize = 0;
+	size_t page_size_ = 0;
 
 	/* new version */
 };

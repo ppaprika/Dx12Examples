@@ -38,7 +38,7 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 {
 	_app = App;
 	GlobalGame = shared_from_this();
-	_uploadBuffer = std::make_unique<UploadBuffer>(App->GetDevice());
+	_uploadBuffer = std::make_shared<UploadBuffer>(App->GetDevice());
 
 	if(Params)
 	{
