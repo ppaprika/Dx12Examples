@@ -14,19 +14,6 @@ using Microsoft::WRL::ComPtr;
 
 class UploadBuffer : public std::enable_shared_from_this<UploadBuffer>
 {
-	/* old version */
-//private:
-//	ComPtr<ID3D12Device> _device;
-//
-//	std::shared_ptr<CommandList> _commandList;
-//
-//public:
-//	UploadBuffer(ComPtr<ID3D12Device> Device);
-//
-//	void DoUpload(ComPtr<ID3D12Resource>& DestinationResource, size_t numElement, size_t elementSize, const void* bufferData, D3D12_RESOURCE_FLAGS flags);
-	/* old version */
-
-
 	/* new version */
 public:
 	struct Page;
@@ -35,6 +22,11 @@ public:
 	{
 		explicit PageTracker(std::weak_ptr<Page> page, std::weak_ptr<UploadBuffer> buffer)
 			: tracking_page_(std::move(page)), owned_buffer_(std::move(buffer)) {}
+
+		PageTracker(const PageTracker&) = delete;
+		PageTracker& operator=(const PageTracker&) = delete;
+		PageTracker(PageTracker&&) = delete;
+		PageTracker& operator=(PageTracker&&) = delete;
 
 		~PageTracker();
 
@@ -89,16 +81,7 @@ private:
 	std::vector<std::shared_ptr<Page>> used_pages_;
 	std::weak_ptr<Page> current_page_;
 
-	//void* cpu_ptr_;
-
-	//D3D12_GPU_VIRTUAL_ADDRESS gpu_ptr_;
-
-	//size_t off_set_ = 0;
-
-	ComPtr<ID3D12Resource> buffer_;
-
 	ComPtr<ID3D12Device> device_;
-
 	size_t page_size_ = 0;
 
 	/* new version */
