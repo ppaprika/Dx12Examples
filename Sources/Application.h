@@ -17,12 +17,12 @@ public:
 	Application();
 
 	int Run(std::shared_ptr<Game> game, CreateWindowParams* Params);
-	ComPtr<IDXGIAdapter> GetAdapter() { return _adapter; }
-	ComPtr<ID3D12Device> GetDevice() { return _device; }
+	ComPtr<IDXGIAdapter> GetAdapter() { return adapter_; }
+	static ComPtr<ID3D12Device> GetDevice() { return device_; }
 private:
 	static ComPtr<IDXGIAdapter> FindAdapter();
 	static ComPtr<ID3D12Device> CreateDevice(ComPtr<IDXGIAdapter> adapter);
 
-	ComPtr<IDXGIAdapter> _adapter;
-	ComPtr<ID3D12Device> _device;
+	static ComPtr<IDXGIAdapter> adapter_;
+	static ComPtr<ID3D12Device> device_;
 };

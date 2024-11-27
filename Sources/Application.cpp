@@ -5,11 +5,13 @@
 
 
 std::shared_ptr<Application> Application::Singleton;
+ComPtr<ID3D12Device> Application::device_;
+ComPtr<IDXGIAdapter> Application::adapter_;
 
 Application::~Application()
 {
-	_adapter.Reset();
-	_device.Reset();
+	adapter_.Reset();
+	device_.Reset();
 }
 
 int Application::Run(std::shared_ptr<Game> game, CreateWindowParams* Params)
@@ -28,8 +30,8 @@ std::shared_ptr<Application> Application::GetApplication()
 
 Application::Application()
 {
-	_adapter = FindAdapter();
-	_device = CreateDevice(_adapter);
+	adapter_ = FindAdapter();
+	device_ = CreateDevice(adapter_);
 }
 
 ComPtr<IDXGIAdapter> Application::FindAdapter()
