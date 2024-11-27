@@ -29,6 +29,7 @@ public:
 
 	int Run(std::shared_ptr<Application> App, CreateWindowParams* Params = nullptr);
 	virtual void Init() {};
+	virtual void Release();
 
 	// input
 	virtual void LButtonDown() {}
@@ -41,9 +42,10 @@ public:
 	static LRESULT StaticWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam);
 	virtual LRESULT WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam);
 
-	void SetShowFps(bool NewShowFps) { _showFps = NewShowFps; }
+	void SetShowFps(bool NewShowFps) { show_fps_ = NewShowFps; }
 	ComPtr<ID3D12Device> GetDevice();
 
+	// deprecated
 	void UpdateBufferResource(
 		ComPtr<ID3D12GraphicsCommandList2> commandList,
 		ID3D12Resource** pDestinationResource,
@@ -52,17 +54,10 @@ public:
 		D3D12_RESOURCE_FLAGS flags, ComPtr<ID3D12Device> device);
 
 	// todo make it private
-public:
-	HWND _hwnd = nullptr;
-	UINT _message = 0;
-	WPARAM _wParam = 0;
-	LPARAM _lParam = 0;
-
-	std::weak_ptr<Application> _app;
-	std::shared_ptr<Window> _window;
-
-	bool _showFps = true;
-	std::chrono::time_point<std::chrono::steady_clock> _lastTick;
-
-	std::shared_ptr<UploadBuffer> _uploadBuffer;
+protected:
+	std::weak_ptr<Application> app_;
+	std::shared_ptr<Window> window_;
+	bool show_fps_ = true;
+	std::chrono::time_point<std::chrono::steady_clock> last_tick_;
+	std::shared_ptr<UploadBuffer> upload_buffer_;
 };

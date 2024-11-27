@@ -121,9 +121,6 @@ void Window::UpdateSize(int width, int height)
 
 void Window::Flush()
 {
-	//_commandList->SingleAndWait(_fence, _fenceValue);
-	//_fenceValue++;
-
 	_commandList->SingleAndWait();
 }
 

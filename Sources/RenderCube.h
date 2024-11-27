@@ -15,35 +15,36 @@ public:
 		XMFLOAT3 Color;
 	};
 
-	static VertexPosColor _vertices[8];
-	static WORD _indicies[36];
+	static VertexPosColor vertices[8];
+	static WORD indicies[36];
 
 	virtual void Init() override;
 	virtual void Update() override;
 	virtual void Render() override;
+	virtual void Release() override;
 	virtual LRESULT WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam) override;
 
 private:
 	struct MouseTracker
 	{
-		bool mouseLeftButtonDown;
-		POINT lastPos;
-		POINT deltaPos;
-	} mouseTracker = { false, {0, 0}, {0,0} };
+		bool mouse_left_button_down;
+		POINT last_pos;
+		POINT delta_pos;
+	} mouse_tracker_ = { false, {0, 0}, {0,0} };
 
-	float currentRotX = 0;
-	float currentRotY = 0;
-	float _fov = 90;
+	float current_rot_x_ = 0;
+	float current_rot_y_ = 0;
+	float fov_ = 90;
 
-	XMMATRIX g_modelMatrix = {};
-	XMMATRIX g_viewMatrix = {};
-	XMMATRIX g_projectionMatrix = {};
+	XMMATRIX g_model_matrix_ = {};
+	XMMATRIX g_view_matrix_ = {};
+	XMMATRIX g_projection_matrix_ = {};
 
 	VertexBufferView vertex_buffer_view_;
 	IndexBufferView index_buffer_view_;
 
-	ComPtr<ID3D12RootSignature> _rootSignature;
-	ComPtr<ID3D12PipelineState> _pipelineState;
+	ComPtr<ID3D12RootSignature> root_signature_;
+	ComPtr<ID3D12PipelineState> pipeline_state_;
 
-	bool _init = false;
+	bool init_ = false;
 };

@@ -22,11 +22,11 @@ Game::~Game()
 
 void Game::Update()
 {
-	if(_showFps)
+	if(show_fps_)
 	{
 		auto now = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double, std::milli> elapsed = now - _lastTick;
-		_lastTick = now;
+		std::chrono::duration<double, std::milli> elapsed = now - last_tick_;
+		last_tick_ = now;
 		double fps = 1000 / elapsed.count();
 		char buffer[500];
 		sprintf_s(buffer, 500, "FPS: %f\n", fps);
@@ -36,15 +36,15 @@ void Game::Update()
 
 int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 {
-	_app = App;
+	app_ = App;
 	GlobalGame = shared_from_this();
-	_uploadBuffer = std::make_shared<UploadBuffer>(App->GetDevice());
+	upload_buffer_ = std::make_shared<UploadBuffer>(App->GetDevice());
 
 	if(Params)
 	{
 		Params->winProc = Game::StaticWinProc;
-		_window = std::make_shared<Window>(shared_from_this(), *Params);
-		_window->InitWindow();
+		window_ = std::make_shared<Window>(shared_from_this(), *Params);
+		window_->InitWindow();
 	}
 
 	Init();
@@ -56,7 +56,14 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 		DispatchMessage(&msg);
 	}
 
+	Release();
+
 	return 0;
+}
+
+void Game::Release()
+{
+	window_->Flush();
 }
 
 LRESULT Game::StaticWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
@@ -66,19 +73,14 @@ LRESULT Game::StaticWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 
 LRESULT Game::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
 {
-	_hwnd = InHwnd;
-	_message = InMessage;
-	_wParam = InWParam;
-	_lParam = InLParam;
-
 	return DefWindowProc(InHwnd, InMessage, InWParam, InLParam);
 }
 
 ComPtr<ID3D12Device> Game::GetDevice()
 {
-	if(!_app.expired())
+	if(!app_.expired())
 	{
-		return _app.lock()->GetDevice();
+		return app_.lock()->GetDevice();
 	}
 	return nullptr;
 }

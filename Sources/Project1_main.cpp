@@ -57,14 +57,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 	std::shared_ptr<Application> App = Application::GetApplication();
 	std::shared_ptr<RenderCube> PureGame = std::make_shared<RenderCube>();
-	App->Run(PureGame, &Params);
+	int value = App->Run(PureGame, &Params);
 
-	MSG msg = {};
-	while(GetMessage(&msg, nullptr, 0, 0))
-	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-
-	return (int)msg.wParam;
+	PureGame = nullptr;
+	return value;
 }

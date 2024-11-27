@@ -12,7 +12,7 @@
 #include "Helpers.h"
 #include "UploadBuffer.h"
 
-RenderCube::VertexPosColor RenderCube::_vertices[8] = {
+RenderCube::VertexPosColor RenderCube::vertices[8] = {
 	{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
 	{ XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
 	{ XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
@@ -23,7 +23,7 @@ RenderCube::VertexPosColor RenderCube::_vertices[8] = {
 	{ XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
 };
 
-WORD RenderCube::_indicies[36] =
+WORD RenderCube::indicies[36] =
 {
 	0, 1, 2, 0, 2, 3,
 	4, 6, 5, 4, 7, 6,
@@ -37,22 +37,10 @@ void RenderCube::Init()
 {
 	Game::Init();
 
-	ComPtr<ID3D12Device> device = _app.lock()->GetDevice();
+	ComPtr<ID3D12Device> device = app_.lock()->GetDevice();
 
-
-	//vertex_buffer_memory = _uploadBuffer->Allocation(sizeof(_vertices), 64);
-	//memcpy(vertex_buffer_memory->cpu_ptr, _vertices, sizeof(_vertices));
-	//_vertexBufferView.BufferLocation = vertex_buffer_memory->gpu_ptr;
-	//_vertexBufferView.SizeInBytes = sizeof(_vertices);
-	//_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
-	vertex_buffer_view_.Init(sizeof(_vertices), 64, sizeof(VertexPosColor), _vertices, _uploadBuffer);
-
-	//index_buffer_memory = _uploadBuffer->Allocation(sizeof(_indicies), 64);
-	//memcpy(index_buffer_memory->cpu_ptr, _indicies, sizeof(_indicies));
-	//_indexBufferView.BufferLocation = index_buffer_memory->gpu_ptr;
-	//_indexBufferView.SizeInBytes = sizeof(_indicies);
-	//_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	index_buffer_view_.Init(sizeof(_indicies), 0, DXGI_FORMAT_R16_UINT, _indicies, _uploadBuffer);
+	vertex_buffer_view_.Init(sizeof(vertices), 64, sizeof(VertexPosColor), vertices, upload_buffer_);
+	index_buffer_view_.Init(sizeof(indicies), 0, DXGI_FORMAT_R16_UINT, indicies, upload_buffer_);
 
 	ComPtr<ID3DBlob> vertexShader;
 	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShader));
@@ -89,7 +77,7 @@ void RenderCube::Init()
 	ComPtr<ID3DBlob> errorBold;
 	ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription, featureData.HighestVersion, &rootSignatureBolb, &errorBold));
 
-	ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBolb->GetBufferPointer(), rootSignatureBolb->GetBufferSize(), IID_PPV_ARGS(&_rootSignature)));
+	ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBolb->GetBufferPointer(), rootSignatureBolb->GetBufferSize(), IID_PPV_ARGS(&root_signature_)));
 
 	struct PipelineStateStream
 	{
@@ -106,7 +94,7 @@ void RenderCube::Init()
 	rtvFormats.NumRenderTargets = 1;
 	rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 
-	pipelineStateStream.pRootSignature = _rootSignature.Get();
+	pipelineStateStream.pRootSignature = root_signature_.Get();
 	pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
 	pipelineStateStream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
@@ -120,29 +108,29 @@ void RenderCube::Init()
 
 	ComPtr<ID3D12Device2> device2;
 	ThrowIfFailed(device.As(&device2));
-	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&_pipelineState)));
+	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipeline_state_)));
 
-	_init = true;
+	init_ = true;
 }
 
 void RenderCube::Update()
 {
 	Game::Update();
 
-	currentRotX += mouseTracker.deltaPos.y / 5;
-	currentRotY += mouseTracker.deltaPos.x / 5;
+	current_rot_x_ += mouse_tracker_.delta_pos.y / 5;
+	current_rot_y_ += mouse_tracker_.delta_pos.x / 5;
 
-	g_modelMatrix = XMMatrixRotationAxis({ -1, 0, 0, 0 }, XMConvertToRadians(currentRotX));
-	g_modelMatrix = XMMatrixRotationAxis({ 0, -1, 0, 0 }, XMConvertToRadians(currentRotY)) * g_modelMatrix;
+	g_model_matrix_ = XMMatrixRotationAxis({ -1, 0, 0, 0 }, XMConvertToRadians(current_rot_x_));
+	g_model_matrix_ = XMMatrixRotationAxis({ 0, -1, 0, 0 }, XMConvertToRadians(current_rot_y_)) * g_model_matrix_;
 
 
 	XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 0);
 	XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
 	XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
-	g_viewMatrix = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
+	g_view_matrix_ = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
-	float aspectRatio = _window->GetWidth() / static_cast<float>(_window->GetHeight());
-	g_projectionMatrix = XMMatrixPerspectiveFovLH(XMConvertToRadians(_fov), aspectRatio, 0.1f, 100.0f);
+	float aspectRatio = window_->GetWidth() / static_cast<float>(window_->GetHeight());
+	g_projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspectRatio, 0.1f, 100.0f);
 }
 
 void RenderCube::Render()
@@ -152,28 +140,34 @@ void RenderCube::Render()
 	DrawWindowParams Params = {};
 	Params.IndexBufferView = index_buffer_view_.GetIndexBufferView();
 	Params.VertexBufferView = vertex_buffer_view_.GetVertexBufferView();
-	Params.DrawNum = _countof(_indicies);
-	Params.PSO = _pipelineState;
-	Params.RootSignature = _rootSignature;
+	Params.DrawNum = _countof(indicies);
+	Params.PSO = pipeline_state_;
+	Params.RootSignature = root_signature_;
 	Params.SetRootConstant = [this](ComPtr<ID3D12GraphicsCommandList2> CommandList)
 		{
-			XMMATRIX mvpMatrix = XMMatrixMultiply(g_modelMatrix, g_viewMatrix);
-			mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projectionMatrix);
+			XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
+			mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
 			CommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
 		};
 
-	_window->_commandList->DrawToWindow(_window, Params);
+	window_->_commandList->DrawToWindow(window_, Params);
+}
+
+void RenderCube::Release()
+{
+	Game::Release();
+
 }
 
 LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
 {
-	if(!_init)
+	if(!init_)
 	{
 		return Game::WinProc(InHwnd, InMessage, InWParam, InLParam);
 	}
 	
 
-	HWND hWnd = _window->GetWindow();
+	HWND hWnd = window_->GetWindow();
 
 	switch (InMessage)
 	{
@@ -185,28 +179,28 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 	case WM_LBUTTONDOWN:
 	{
 		SetCapture(hWnd);
-		mouseTracker.mouseLeftButtonDown = true;
-		mouseTracker.lastPos.x = GET_X_LPARAM(InLParam);
-		mouseTracker.lastPos.y = GET_Y_LPARAM(InLParam);
+		mouse_tracker_.mouse_left_button_down = true;
+		mouse_tracker_.last_pos.x = GET_X_LPARAM(InLParam);
+		mouse_tracker_.last_pos.y = GET_Y_LPARAM(InLParam);
 
 
-		char buffer[] = "Mouse Button Down.\n";
-		OutputDebugStringA(buffer);
+		//char buffer[] = "Mouse Button Down.\n";
+		//OutputDebugStringA(buffer);
 		break;
 	}
 	case WM_MOUSEMOVE:
 	{
-		if (mouseTracker.mouseLeftButtonDown)
+		if (mouse_tracker_.mouse_left_button_down)
 		{
-			mouseTracker.deltaPos.x = GET_X_LPARAM(InLParam) - mouseTracker.lastPos.x;
-			mouseTracker.deltaPos.y = GET_Y_LPARAM(InLParam) - mouseTracker.lastPos.y;
+			mouse_tracker_.delta_pos.x = GET_X_LPARAM(InLParam) - mouse_tracker_.last_pos.x;
+			mouse_tracker_.delta_pos.y = GET_Y_LPARAM(InLParam) - mouse_tracker_.last_pos.y;
 
-			mouseTracker.lastPos.x = GET_X_LPARAM(InLParam);
-			mouseTracker.lastPos.y = GET_Y_LPARAM(InLParam);
+			mouse_tracker_.last_pos.x = GET_X_LPARAM(InLParam);
+			mouse_tracker_.last_pos.y = GET_Y_LPARAM(InLParam);
 
-			char buffer[200];
-			sprintf_s(buffer, "deltaX:%d  deltaY:%d \n", mouseTracker.deltaPos.x, mouseTracker.deltaPos.y);
-			OutputDebugStringA(buffer);
+			//char buffer[200];
+			//sprintf_s(buffer, "deltaX:%d  deltaY:%d \n", mouse_tracker_.delta_pos.x, mouse_tracker_.delta_pos.y);
+			//OutputDebugStringA(buffer);
 		}
 		break;
 	}
@@ -216,40 +210,37 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 		{
 			ReleaseCapture();
 		}
-		mouseTracker.mouseLeftButtonDown = false;
-		mouseTracker.deltaPos = { 0, 0 };
+		mouse_tracker_.mouse_left_button_down = false;
+		mouse_tracker_.delta_pos = { 0, 0 };
 
 
-		char buffer[] = "Mouse Button Up.\n";
-		OutputDebugStringA(buffer);
+		//char buffer[] = "Mouse Button Up.\n";
+		//OutputDebugStringA(buffer);
 		break;
 	}
 	case WM_MOUSEWHEEL:
 	{
 		float zDelta = ((int)(short)HIWORD(InWParam)) / (float)WHEEL_DELTA;
-		_fov += zDelta;
-		_fov = clamp(_fov, 12.0f, 90.0f);
+		fov_ -= zDelta;
+		fov_ = clamp(fov_, 12.0f, 90.0f);
 
-		char buffer[500];
-		sprintf_s(buffer, "g_fov: %f \n", _fov);
-		OutputDebugStringA(buffer);
+		//char buffer[500];
+		//sprintf_s(buffer, "g_fov: %f \n", fov_);
+		//OutputDebugStringA(buffer);
 		break;
 	}
 	case WM_SIZE:
 	{
-		if (_init)
+		if (init_)
 		{
-			UINT numBackBuffers = _window->_numOfBackBuffers;
-			UINT windowWidth = _window->GetWidth();
-			UINT windowHeight = _window->GetHeight();
-			std::vector<ComPtr<ID3D12Resource>>& backBuffers = _window->_backBuffers;
-			ComPtr<IDXGISwapChain3> swapChain = _window->_swapChain;
+			UINT numBackBuffers = window_->_numOfBackBuffers;
+			UINT windowWidth = window_->GetWidth();
+			UINT windowHeight = window_->GetHeight();
+			std::vector<ComPtr<ID3D12Resource>>& backBuffers = window_->_backBuffers;
+			ComPtr<IDXGISwapChain3> swapChain = window_->_swapChain;
 			ComPtr<ID3D12Device> device = GetDevice();
-			ComPtr<ID3D12DescriptorHeap> descriptorHeap = _window->_descriptorHeap;
-			UINT& currentBackBuffer = _window->_currentBackBuffer;
-
-
-
+			ComPtr<ID3D12DescriptorHeap> descriptorHeap = window_->_descriptorHeap;
+			UINT& currentBackBuffer = window_->_currentBackBuffer;
 
 			UINT width = LOWORD(InLParam) == 0 ? 1 : LOWORD(InLParam);
 			UINT height = HIWORD(InLParam) == 0 ? 1 : HIWORD(InLParam);
@@ -258,16 +249,16 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 			sprintf_s(buffer, "width: %d, height: %d \n", width, height);
 			OutputDebugStringA(buffer);
 
-			_window->UpdateSize(width, height);
+			window_->UpdateSize(width, height);
 
-			_window->SetHeight(height);
-			_window->SetWidth(width);
+			window_->SetHeight(height);
+			window_->SetWidth(width);
 
-			_window->InitViewportAndRect();
-			_window->Flush();
+			window_->InitViewportAndRect();
+			window_->Flush();
 
 			// resize depth buffer
-			_window->ResizeDepthBuffer();
+			window_->ResizeDepthBuffer();
 
 			// resize render target view
 			for (int i = 0; i < numBackBuffers; ++i)
@@ -275,16 +266,16 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 				backBuffers[i].Reset();
 			}
 			swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-			_window->UpdateRenderTarget(device, swapChain, backBuffers, numBackBuffers, descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, _window->_heapSize);
+			window_->UpdateRenderTarget(device, swapChain, backBuffers, numBackBuffers, descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, window_->_heapSize);
 			currentBackBuffer = swapChain->GetCurrentBackBufferIndex();
 		}
 		break;
 	}
 	case WM_DESTROY:
-		//Quit();
-		PostQuitMessage(0);
-		return 0;
+		PostQuitMessage(WM_QUIT);
+		break;
 	default:
 		return DefWindowProc(hWnd, InMessage, InWParam, InLParam);
 	}
+	return DefWindowProc(hWnd, InMessage, InWParam, InLParam);
 }

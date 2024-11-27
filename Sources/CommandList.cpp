@@ -31,20 +31,6 @@ CommandList::~CommandList()
 	_device.Reset();
 }
 
-//void CommandList::Execute()
-//{
-//	_commandList->Close();
-//	ID3D12CommandList* lists[] = { _commandList.Get() };
-//	_commandQueue->ExecuteCommandLists(1, lists);
-//}
-//
-//void CommandList::Reset()
-//{
-//	_commandList->Close();
-//	_commandAllocators[0]->Reset();
-//	_commandList->Reset(_commandAllocators[0].Get(), nullptr);
-//}
-
 void CommandList::SingleAndWait()
 {
 	_commandQueue->Signal(_fence.Get(), _fenceValue);
