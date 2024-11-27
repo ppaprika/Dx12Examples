@@ -113,10 +113,10 @@ void RenderCube::Init()
 
 	init_ = true;
 
-	ScratchImage scratchImage;
-	HRESULT hr = LoadFromWICFile(L"../../resources/Texture.jpg", WIC_FLAGS_NONE, nullptr, scratchImage);
-	if (FAILED(hr)) return;
-	const Image* img = scratchImage.GetImage(0, 0, 0);
+	//ScratchImage scratchImage;
+	//HRESULT hr = LoadFromWICFile(L"../../resources/Texture.jpg", WIC_FLAGS_NONE, nullptr, scratchImage);
+	//if (FAILED(hr)) return;
+	//const Image* img = scratchImage.GetImage(0, 0, 0);
 }
 
 void RenderCube::Update()
