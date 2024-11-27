@@ -40,17 +40,19 @@ void RenderCube::Init()
 	ComPtr<ID3D12Device> device = _app.lock()->GetDevice();
 
 
-	vertex_buffer_memory = _uploadBuffer->Allocation(sizeof(_vertices), 64);
-	memcpy(vertex_buffer_memory->cpu_ptr, _vertices, sizeof(_vertices));
-	_vertexBufferView.BufferLocation = vertex_buffer_memory->gpu_ptr;
-	_vertexBufferView.SizeInBytes = sizeof(_vertices);
-	_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
+	//vertex_buffer_memory = _uploadBuffer->Allocation(sizeof(_vertices), 64);
+	//memcpy(vertex_buffer_memory->cpu_ptr, _vertices, sizeof(_vertices));
+	//_vertexBufferView.BufferLocation = vertex_buffer_memory->gpu_ptr;
+	//_vertexBufferView.SizeInBytes = sizeof(_vertices);
+	//_vertexBufferView.StrideInBytes = sizeof(VertexPosColor);
+	vertex_buffer_view_.Init(sizeof(_vertices), 64, sizeof(VertexPosColor), _vertices, _uploadBuffer);
 
-	index_buffer_memory = _uploadBuffer->Allocation(sizeof(_indicies), 64);
-	memcpy(index_buffer_memory->cpu_ptr, _indicies, sizeof(_indicies));
-	_indexBufferView.BufferLocation = index_buffer_memory->gpu_ptr;
-	_indexBufferView.SizeInBytes = sizeof(_indicies);
-	_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+	//index_buffer_memory = _uploadBuffer->Allocation(sizeof(_indicies), 64);
+	//memcpy(index_buffer_memory->cpu_ptr, _indicies, sizeof(_indicies));
+	//_indexBufferView.BufferLocation = index_buffer_memory->gpu_ptr;
+	//_indexBufferView.SizeInBytes = sizeof(_indicies);
+	//_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+	index_buffer_view_.Init(sizeof(_indicies), 0, DXGI_FORMAT_R16_UINT, _indicies, _uploadBuffer);
 
 	ComPtr<ID3DBlob> vertexShader;
 	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShader));
@@ -148,8 +150,8 @@ void RenderCube::Render()
 	Game::Render();
 
 	DrawWindowParams Params = {};
-	Params.IndexBufferView = _indexBufferView;
-	Params.VertexBufferView = _vertexBufferView;
+	Params.IndexBufferView = index_buffer_view_.GetIndexBufferView();
+	Params.VertexBufferView = vertex_buffer_view_.GetVertexBufferView();
 	Params.DrawNum = _countof(_indicies);
 	Params.PSO = _pipelineState;
 	Params.RootSignature = _rootSignature;

@@ -39,10 +39,8 @@ private:
 	XMMATRIX g_viewMatrix = {};
 	XMMATRIX g_projectionMatrix = {};
 
-	ComPtr<ID3D12Resource> _vertexBuffer;
-	ComPtr<ID3D12Resource> _indexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW _vertexBufferView = {};
-	D3D12_INDEX_BUFFER_VIEW _indexBufferView = {};
+	VertexBufferView vertex_buffer_view_;
+	IndexBufferView index_buffer_view_;
 
 	ComPtr<ID3D12RootSignature> _rootSignature;
 	ComPtr<ID3D12PipelineState> _pipelineState;

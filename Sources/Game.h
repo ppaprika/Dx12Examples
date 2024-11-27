@@ -6,7 +6,9 @@
 #include <D3DX12/d3d12.h>
 #include <wrl/client.h>
 
+#include "IndexBufferView.h"
 #include "UploadBuffer.h"
+#include "VertexBufferView.h"
 
 
 class UploadBuffer;
@@ -63,7 +65,4 @@ public:
 	std::chrono::time_point<std::chrono::steady_clock> _lastTick;
 
 	std::shared_ptr<UploadBuffer> _uploadBuffer;
-
-	std::shared_ptr<UploadBuffer::Memory> vertex_buffer_memory;
-	std::shared_ptr<UploadBuffer::Memory> index_buffer_memory;
 };

@@ -39,13 +39,20 @@ UploadBuffer::PageTracker::~PageTracker()
 
 std::shared_ptr<UploadBuffer::Memory> UploadBuffer::Allocation(size_t size, size_t alignment)
 {
+	if(size > page_size_)
+	{
+		MessageBox(nullptr, L"Memory required is bigger than page size!", L"Bad Allocate!", MB_ICONERROR);
+		ExitProcess(1);
+	}
+
 	// current page have enough space
 	if(auto page = current_page_.lock())
 	{
 		if(page->HasEnoughSpace(size, alignment))
 		{
-			std::shared_ptr<Memory> memory = std::make_shared<Memory>(static_cast<uint8_t*>(page->cpu_ptr) + page->off_set, page->gpu_ptr + page->off_set, page->track_this_page.lock());
-			page->off_set = page->off_set + AlignUp(size, alignment);
+			size_t newOffset = AlignUp(page->off_set, alignment);
+			std::shared_ptr<Memory> memory = std::make_shared<Memory>(static_cast<uint8_t*>(page->cpu_ptr) + newOffset, page->gpu_ptr + newOffset, page->track_this_page.lock());
+			page->off_set = page->off_set + size;
 			return memory;
 		}
 	}
@@ -60,8 +67,9 @@ std::shared_ptr<UploadBuffer::Memory> UploadBuffer::Allocation(size_t size, size
 		// new tracker to track this page
 		std::shared_ptr<PageTracker> tracker = std::make_shared<PageTracker>(page, shared_from_this());
 		page->track_this_page = tracker;
-		std::shared_ptr<Memory> memory = std::make_shared<Memory>(static_cast<uint8_t*>(page->cpu_ptr) + page->off_set, page->gpu_ptr + page->off_set, tracker);
-		page->off_set = page->off_set + AlignUp(size, alignment);
+		size_t newOffset = AlignUp(page->off_set, alignment);
+		std::shared_ptr<Memory> memory = std::make_shared<Memory>(static_cast<uint8_t*>(page->cpu_ptr) + newOffset, page->gpu_ptr + newOffset, tracker);
+		page->off_set = page->off_set + size;
 		return memory;
 	}
 
@@ -72,8 +80,9 @@ std::shared_ptr<UploadBuffer::Memory> UploadBuffer::Allocation(size_t size, size
 	used_pages_.push_back(page);
 	std::shared_ptr<PageTracker> tracker = std::make_shared<PageTracker>(page, shared_from_this());
 	page->track_this_page = tracker;
-	std::shared_ptr<Memory> memory = std::make_shared<Memory>(static_cast<uint8_t*>(page->cpu_ptr) + page->off_set, page->gpu_ptr + page->off_set, tracker);
-	page->off_set = page->off_set + AlignUp(size, alignment);
+	size_t newOffset = AlignUp(page->off_set, alignment);
+	std::shared_ptr<Memory> memory = std::make_shared<Memory>(static_cast<uint8_t*>(page->cpu_ptr) + newOffset, page->gpu_ptr + newOffset, tracker);
+	page->off_set = page->off_set + size;
 	return memory;
 }
 
@@ -131,6 +140,6 @@ void UploadBuffer::Page::Reset()
 
 bool UploadBuffer::Page::HasEnoughSpace(size_t size, size_t alignment)
 {
-	size_t requiredSize = AlignUp(size, alignment);
-	return off_set + requiredSize < page_size;
+	size_t newOffset = AlignUp(off_set, alignment);
+	return size + newOffset < page_size;
 }

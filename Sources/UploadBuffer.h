@@ -47,7 +47,7 @@ public:
 		std::shared_ptr<PageTracker> tracker_;
 	};
 
-	UploadBuffer(ComPtr<ID3D12Device> device, size_t pageSize = _2MB);
+	UploadBuffer(ComPtr<ID3D12Device> device, size_t pageSize = 256);
 
 	virtual ~UploadBuffer();
 
