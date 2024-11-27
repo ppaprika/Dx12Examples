@@ -9,6 +9,7 @@
 #include "Window.h"
 #include "Application.h"
 #include "CommandList.h"
+#include "DirectXTex.h"
 #include "Helpers.h"
 #include "UploadBuffer.h"
 
@@ -111,6 +112,11 @@ void RenderCube::Init()
 	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipeline_state_)));
 
 	init_ = true;
+
+	ScratchImage scratchImage;
+	HRESULT hr = LoadFromWICFile(L"../../resources/Texture.jpg", WIC_FLAGS_NONE, nullptr, scratchImage);
+	if (FAILED(hr)) return;
+	const Image* img = scratchImage.GetImage(0, 0, 0);
 }
 
 void RenderCube::Update()
