@@ -14,14 +14,14 @@
 #include "UploadBuffer.h"
 
 RenderCube::VertexPosColor RenderCube::vertices[8] = {
-	{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f) }, // 0
-	{ XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) }, // 1
-	{ XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f) }, // 2
-	{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) }, // 3
-	{ XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) }, // 4
-	{ XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) }, // 5
-	{XMFLOAT3(1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) }, // 6
-	{ XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) }  // 7
+	{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT2(0, 1)}, // 0
+	{ XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),  XMFLOAT2(0, 0) }, // 1
+	{ XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(1, 0) }, // 2
+	{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) , XMFLOAT2(1, 1)}, // 3
+	{ XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0, 1) }, // 4
+	{ XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) , XMFLOAT2(0, 0)}, // 5
+	{XMFLOAT3(1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) , XMFLOAT2(1, 0)}, // 6
+	{ XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) , XMFLOAT2(1, 1)}  // 7
 };
 
 WORD RenderCube::indicies[36] =
@@ -51,7 +51,8 @@ void RenderCube::Init()
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
 		{"MYPOSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+		{"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"MYTEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
 	};
 
 	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
@@ -61,25 +62,47 @@ void RenderCube::Init()
 		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 	}
 
+	// create root signature
+	CD3DX12_DESCRIPTOR_RANGE1 descriptorRange[1] = {};
+	descriptorRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+
+	CD3DX12_ROOT_PARAMETER1 rootParameter[2] = {};
+	rootParameter[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	rootParameter[1].InitAsDescriptorTable(1, &descriptorRange[0], D3D12_SHADER_VISIBILITY_PIXEL);
+	// inline descriptor
+	//rootParameter[1].InitAsShaderResourceView(0);
+
+	// create static sampler
+	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	samplerDesc.MipLODBias = 0.0f;
+	samplerDesc.MaxAnisotropy = 1;
+	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	samplerDesc.MinLOD = 0;
+	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
+	samplerDesc.ShaderRegister = 0;
+	samplerDesc.RegisterSpace = 0;
+	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
-
-	CD3DX12_ROOT_PARAMETER1 rootParameter[1];
-	rootParameter[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription = {};
-	rootSignatureDescription.Init_1_1(_countof(rootParameter), rootParameter, 0, nullptr, rootSignatureFlags);
+	rootSignatureDescription.Init_1_1(_countof(rootParameter), rootParameter, 1, &samplerDesc, rootSignatureFlags);
 
-	ComPtr<ID3DBlob> rootSignatureBolb;
-	ComPtr<ID3DBlob> errorBold;
-	ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription, featureData.HighestVersion, &rootSignatureBolb, &errorBold));
+	ComPtr<ID3DBlob> rootSignatureBlob;
+	ComPtr<ID3DBlob> errorBlob;
+	ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription, featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
 
-	ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBolb->GetBufferPointer(), rootSignatureBolb->GetBufferSize(), IID_PPV_ARGS(&root_signature_)));
+	ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&root_signature_)));
 
+	// create PSO
 	struct PipelineStateStream
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
@@ -111,12 +134,17 @@ void RenderCube::Init()
 	ThrowIfFailed(device.As(&device2));
 	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipeline_state_)));
 
-	init_ = true;
+	// load texture to srv
+	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+	srvHeapDesc.NumDescriptors = 1;
+	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	ThrowIfFailed(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv_desc_heap_)));
+	D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = srv_desc_heap_->GetCPUDescriptorHandleForHeapStart();
+	TextureLoader::LoadTextureFromFile(Application::GetDevice(), window_->_commandList->GetCommandList(), L"../../resources/Texture.jpg", texture_resource_, srvHandle);
+	window_->_commandList->SingleAndWait();
 
-	//ScratchImage scratchImage;
-	//HRESULT hr = LoadFromWICFile(L"../../resources/Texture.jpg", WIC_FLAGS_NONE, nullptr, scratchImage);
-	//if (FAILED(hr)) return;
-	//const Image* img = scratchImage.GetImage(0, 0, 0);
+	init_ = true;
 }
 
 void RenderCube::Update()
@@ -153,7 +181,19 @@ void RenderCube::Render()
 		{
 			XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
 			mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
+		// inline constant
 			CommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
+		// descriptor table
+			CommandList->SetDescriptorHeaps(1, srv_desc_heap_.GetAddressOf());
+			CommandList->SetGraphicsRootDescriptorTable(1, srv_desc_heap_->GetGPUDescriptorHandleForHeapStart());
+
+		// inline descriptor
+		// CommandList->SetGraphicsRootShaderResourceView(1, texture_resource_.texture->GetGPUVirtualAddress());
+		// should use
+		// ByteAddressBuffer texture : register(t0);
+		// instead of
+		// Texture2D texture : register(t0);
+		// in pixel shader
 		};
 
 	window_->_commandList->DrawToWindow(window_, Params);
@@ -162,7 +202,6 @@ void RenderCube::Render()
 void RenderCube::Release()
 {
 	Game::Release();
-
 }
 
 LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)

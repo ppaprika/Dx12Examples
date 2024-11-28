@@ -1,9 +1,14 @@
 struct PixelShaderInput
 {
-	float4 Color    : COLOR;
+    float4 Position : SV_Position;
+    float2 TexCoord : TEXCOO;
 };
+
+Texture2D g_texture : register(t0);
+SamplerState g_sampler : register(s0);
+
 
 float4 main( PixelShaderInput IN ) : SV_Target
 {
-    return IN.Color;
+     return g_texture.Sample(g_sampler, IN.TexCoord);
 }

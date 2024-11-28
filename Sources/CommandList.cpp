@@ -150,7 +150,6 @@ void CommandList::InitCommandList()
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> tempList;
 	ThrowIfFailed(_device->CreateCommandList(0, _type, _commandAllocators[0].Get(), nullptr, IID_PPV_ARGS(&tempList)));
 	tempList.As(&_commandList);
-	_commandList->Close();
 }
 
 void CommandList::InitFence()

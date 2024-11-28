@@ -3,6 +3,7 @@
 #include <DirectXMath.h>
 
 #include "Game.h"
+#include "TextureLoader.h"
 
 using namespace DirectX;
 
@@ -13,6 +14,7 @@ public:
 	{
 		XMFLOAT3 Position;
 		XMFLOAT3 Color;
+		XMFLOAT2 TexCoord;
 	};
 
 	static VertexPosColor vertices[8];
@@ -42,6 +44,9 @@ private:
 
 	VertexBufferView vertex_buffer_view_;
 	IndexBufferView index_buffer_view_;
+
+	TextureLoader::TextureResource texture_resource_ = {};
+	ComPtr<ID3D12DescriptorHeap> srv_desc_heap_;
 
 	ComPtr<ID3D12RootSignature> root_signature_;
 	ComPtr<ID3D12PipelineState> pipeline_state_;

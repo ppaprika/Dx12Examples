@@ -22,8 +22,8 @@ public:
 
 	static HRESULT LoadTextureFromFile
 	(
-		ComPtr<ID3D12Device>& device,
-		ComPtr<ID3D12GraphicsCommandList>& commandList,
+		ComPtr<ID3D12Device> device,
+		ComPtr<ID3D12GraphicsCommandList> commandList,
 		const wchar_t* filename,
 		TextureResource& outResource,
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle
