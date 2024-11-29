@@ -60,4 +60,7 @@ protected:
 	bool show_fps_ = true;
 	std::chrono::time_point<std::chrono::steady_clock> last_tick_;
 	std::shared_ptr<UploadBuffer> upload_buffer_;
+
+	// command lists
+	std::shared_ptr<CommandList> direct_command_list_;
 };

@@ -3,6 +3,7 @@
 #include <intsafe.h>
 #include <D3DX12/d3dx12_barriers.h>
 
+#include "Application.h"
 #include "Window.h"
 
 #include "Helpers.h"
@@ -56,19 +57,19 @@ void CommandList::DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowP
 
 	CD3DX12_VIEWPORT& viewport = Window->_viewport;
 	D3D12_RECT& d3d12Rect = Window->_d3d12Rect;
-
 	std::vector<ComPtr<ID3D12Resource>>& backBuffers = Window->_backBuffers;
 	UINT& currentBackBuffer = Window->_currentBackBuffer;
-	ComPtr<ID3D12DescriptorHeap> descriptorHeap = Window->_descriptorHeap;
-	SIZE_T heapSize = Window->_heapSize;
+	ComPtr<ID3D12DescriptorHeap> descriptorHeap = Window->rtv_heap;
 	ComPtr<IDXGISwapChain3> swapChain = Window->_swapChain;
+	auto dsv = Window->dsv_heap->GetCPUDescriptorHandleForHeapStart();
+
+	SIZE_T heapSize = Application::GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 
 	ComPtr<ID3D12Resource> backBuffer = backBuffers[currentBackBuffer];
 	ComPtr<ID3D12CommandAllocator> allocator = _commandAllocators[currentBackBuffer];
 	auto rtv = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	rtv.ptr += currentBackBuffer * heapSize;
-	auto dsv = Window->_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 
 	_commandList->Reset(allocator.Get(), nullptr);
 

@@ -6,6 +6,7 @@
 #include <D3DX12/d3dx12_resource_helpers.h>
 
 #include "Application.h"
+#include "CommandList.h"
 #include "Helpers.h"
 #include "UploadBuffer.h"
 #include "Window.h"
@@ -36,17 +37,18 @@ void Game::Update()
 
 int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 {
-	app_ = App;
 	GlobalGame = shared_from_this();
-	upload_buffer_ = std::make_shared<UploadBuffer>(App->GetDevice());
 
+	app_ = App;
+	upload_buffer_ = std::make_shared<UploadBuffer>(App->GetDevice());
+	direct_command_list_ = std::make_shared<CommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params->numOfBackBuffers);
+	Params->command_list = direct_command_list_;
 	if(Params)
 	{
 		Params->winProc = Game::StaticWinProc;
 		window_ = std::make_shared<Window>(shared_from_this(), *Params);
 		window_->InitWindow();
 	}
-
 	Init();
 
 	MSG msg = {};
@@ -55,9 +57,7 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
-
 	Release();
-
 	return 0;
 }
 

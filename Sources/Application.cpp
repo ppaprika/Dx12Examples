@@ -34,6 +34,11 @@ Application::Application()
 	device_ = CreateDevice(adapter_);
 }
 
+UINT Application::GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+	return device_->GetDescriptorHandleIncrementSize(type);
+}
+
 ComPtr<IDXGIAdapter> Application::FindAdapter()
 {
 	ComPtr<IDXGIFactory> factory;

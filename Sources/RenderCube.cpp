@@ -141,8 +141,8 @@ void RenderCube::Init()
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	ThrowIfFailed(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv_desc_heap_)));
 	D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = srv_desc_heap_->GetCPUDescriptorHandleForHeapStart();
-	TextureLoader::LoadTextureFromFile(Application::GetDevice(), window_->_commandList->GetCommandList(), L"../../resources/Texture.jpg", texture_resource_, srvHandle);
-	window_->_commandList->SingleAndWait();
+	TextureLoader::LoadTextureFromFile(Application::GetDevice(), direct_command_list_->GetCommandList(), L"../../resources/Texture.jpg", texture_resource_, srvHandle);
+	direct_command_list_->SingleAndWait();
 
 	init_ = true;
 }
@@ -196,7 +196,7 @@ void RenderCube::Render()
 		// in pixel shader
 		};
 
-	window_->_commandList->DrawToWindow(window_, Params);
+	direct_command_list_->DrawToWindow(window_, Params);
 }
 
 void RenderCube::Release()
@@ -278,41 +278,13 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 	{
 		if (init_)
 		{
-			UINT numBackBuffers = window_->_numOfBackBuffers;
-			UINT windowWidth = window_->GetWidth();
-			UINT windowHeight = window_->GetHeight();
-			std::vector<ComPtr<ID3D12Resource>>& backBuffers = window_->_backBuffers;
-			ComPtr<IDXGISwapChain3> swapChain = window_->_swapChain;
-			ComPtr<ID3D12Device> device = GetDevice();
-			ComPtr<ID3D12DescriptorHeap> descriptorHeap = window_->_descriptorHeap;
-			UINT& currentBackBuffer = window_->_currentBackBuffer;
-
 			UINT width = LOWORD(InLParam) == 0 ? 1 : LOWORD(InLParam);
 			UINT height = HIWORD(InLParam) == 0 ? 1 : HIWORD(InLParam);
 
-			char buffer[500];
-			sprintf_s(buffer, "width: %d, height: %d \n", width, height);
-			OutputDebugStringA(buffer);
-
+			//char buffer[500];
+			//sprintf_s(buffer, "width: %d, height: %d \n", width, height);
+			//OutputDebugStringA(buffer);
 			window_->UpdateSize(width, height);
-
-			window_->SetHeight(height);
-			window_->SetWidth(width);
-
-			window_->InitViewportAndRect();
-			window_->Flush();
-
-			// resize depth buffer
-			window_->ResizeDepthBuffer();
-
-			// resize render target view
-			for (int i = 0; i < numBackBuffers; ++i)
-			{
-				backBuffers[i].Reset();
-			}
-			swapChain->ResizeBuffers(numBackBuffers, windowWidth, windowHeight, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-			window_->UpdateRenderTarget(device, swapChain, backBuffers, numBackBuffers, descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, window_->_heapSize);
-			currentBackBuffer = swapChain->GetCurrentBackBufferIndex();
 		}
 		break;
 	}

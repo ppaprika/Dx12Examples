@@ -18,14 +18,13 @@ Window::Window(std::shared_ptr<Game> Owner, const CreateWindowParams& Params)
 		ExitProcess(1);
 	}
 
-	_width = Params.nWidth;
-	_height = Params.nHeight;
+	width_ = Params.nWidth;
+	height_ = Params.nHeight;
 	_numOfBackBuffers = Params.numOfBackBuffers;
-	_heapSize = Application::GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	_currentBackBuffer = 0;
 
-	_window = CreateWindowW(Params.wndClassName, Params.wndName, Params.dwStyle, Params.x, Params.y, Params.nWidth, Params.nHeight, nullptr, nullptr, Params.hInstance, nullptr);
-	if(_window == nullptr)
+	window_ = CreateWindowW(Params.wndClassName, Params.wndName, Params.dwStyle, Params.x, Params.y, Params.nWidth, Params.nHeight, nullptr, nullptr, Params.hInstance, nullptr);
+	if(window_ == nullptr)
 	{
 		DWORD error = GetLastError();
 		wchar_t errorMsg[256];
@@ -34,14 +33,13 @@ Window::Window(std::shared_ptr<Game> Owner, const CreateWindowParams& Params)
 		ExitProcess(1);
 	}
 
-	ShowWindow(_window, Params.nCmdShow);
+	ShowWindow(window_, Params.nCmdShow);
 
-	_commandList = std::make_shared<CommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params.numOfBackBuffers);
-
-	CreateSwapChain(_window, _commandList->_commandQueue, Params.numOfBackBuffers).As(&_swapChain);
-	_descriptorHeap = CreateDescriptorHeap(Application::GetDevice(), Params.numOfBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	UpdateRenderTarget(Application::GetDevice(), _swapChain, _backBuffers, Params.numOfBackBuffers, _descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, _heapSize);
-	_owner = Owner;
+	CreateSwapChain(window_, Params.command_list->_commandQueue, Params.numOfBackBuffers).As(&_swapChain);
+	rtv_heap = CreateDescriptorHeap(Application::GetDevice(), Params.numOfBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	UpdateRenderTarget(Application::GetDevice(), _swapChain, _backBuffers, Params.numOfBackBuffers, rtv_heap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	owner_ = Owner;
+	_commandList = Params.command_list;
 }
 
 Window::~Window()
@@ -56,7 +54,7 @@ void Window::InitWindow()
 
 void Window::InitViewportAndRect()
 {
-	_viewport = CD3DX12_VIEWPORT(0., 0., _width, _height, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
+	_viewport = CD3DX12_VIEWPORT(0., 0., width_, height_, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
 	_d3d12Rect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 }
 
@@ -67,7 +65,7 @@ void Window::InitDepth()
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	heapDesc.NumDescriptors = 1;
-	ThrowIfFailed(Application::GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&_dsvHeap)));
+	ThrowIfFailed(Application::GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&dsv_heap)));
 
 	ResizeDepthBuffer();
 }
@@ -81,7 +79,7 @@ void Window::ResizeDepthBuffer()
 	ComPtr<ID3D12Device> device = Application::GetDevice();
 
 	CD3DX12_HEAP_PROPERTIES heapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
-	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, _width, _height, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+	CD3DX12_RESOURCE_DESC resourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, width_, height_, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 	ThrowIfFailed(device->CreateCommittedResource(
 		&heapProperties,
 		D3D12_HEAP_FLAG_NONE,
@@ -97,26 +95,25 @@ void Window::ResizeDepthBuffer()
 	desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
 	desc.Texture2D.MipSlice = 0;
 
-	auto dsv = _dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	auto dsv = dsv_heap->GetCPUDescriptorHandleForHeapStart();
 	device->CreateDepthStencilView(_depthBuffer.Get(), &desc, dsv);
 }
 
 void Window::UpdateSize(int width, int height)
 {
-	_width = width;
-	_height = height;
+	width_ = width;
+	height_ = height;
 
-	_viewport = CD3DX12_VIEWPORT(0., 0., _width, _height, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
 	Flush();
-
+	InitViewportAndRect();
 	ResizeDepthBuffer();
 
-	for(int i = 0; i < _numOfBackBuffers; ++i)
+	for(UINT i = 0; i < _numOfBackBuffers; ++i)
 	{
 		_backBuffers[i].Reset();
 	}
-	_swapChain->ResizeBuffers(_numOfBackBuffers, _width, _height, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
-	UpdateRenderTarget(Application::GetDevice(), _swapChain, _backBuffers, _numOfBackBuffers, _descriptorHeap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, _heapSize);
+	_swapChain->ResizeBuffers(_numOfBackBuffers, width_, height_, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
+	UpdateRenderTarget(Application::GetDevice(), _swapChain, _backBuffers, _numOfBackBuffers, rtv_heap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	_currentBackBuffer = _swapChain->GetCurrentBackBufferIndex();
 }
 
@@ -150,7 +147,7 @@ ComPtr<IDXGISwapChain> Window::CreateSwapChain(HWND window, ComPtr<ID3D12Command
 
 bool Window::UpdateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain> swapChain,
 	std::vector<ComPtr<ID3D12Resource>>& resources, UINT bufferNum, ComPtr<ID3D12DescriptorHeap> heap,
-	D3D12_DESCRIPTOR_HEAP_TYPE type, SIZE_T& heapSize)
+	D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
 	D3D12_RENDER_TARGET_VIEW_DESC rtDesc = {};
 	rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -158,9 +155,9 @@ bool Window::UpdateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapCha
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtHandle = heap->GetCPUDescriptorHandleForHeapStart();
 
-	heapSize = device->GetDescriptorHandleIncrementSize(type);
+	SIZE_T heapSize = Application::GetDescriptorSize(type);
 
-	for (int i = 0; i < bufferNum; ++i)
+	for (UINT i = 0; i < bufferNum; ++i)
 	{
 		ComPtr<ID3D12Resource> buffer;
 		swapChain->GetBuffer(i, IID_PPV_ARGS(&buffer));
@@ -193,10 +190,3 @@ ComPtr<ID3D12DescriptorHeap> Window::CreateDescriptorHeap(ComPtr<ID3D12Device> d
 	return value;
 }
 
-ComPtr<ID3D12Fence> Window::CreateFence(ComPtr<ID3D12Device> device, UINT fenceValue)
-{
-	ComPtr<ID3D12Fence> value;
-	ThrowIfFailed(device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&value)));
-
-	return value;
-}

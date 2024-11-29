@@ -16,6 +16,8 @@ public:
 	~Application();
 	Application();
 
+	static UINT GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE type);
+
 	int Run(std::shared_ptr<Game> game, CreateWindowParams* Params);
 	ComPtr<IDXGIAdapter> GetAdapter() { return adapter_; }
 	static ComPtr<ID3D12Device> GetDevice() { return device_; }
