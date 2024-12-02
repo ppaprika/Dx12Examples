@@ -9,7 +9,7 @@
 
 #include "Defines.h"
 
-class CommandList;
+class DirectCommandList;
 using Microsoft::WRL::ComPtr;
 
 class UploadBuffer : public std::enable_shared_from_this<UploadBuffer>

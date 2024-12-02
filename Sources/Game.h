@@ -62,5 +62,5 @@ protected:
 	std::shared_ptr<UploadBuffer> upload_buffer_;
 
 	// command lists
-	std::shared_ptr<CommandList> direct_command_list_;
+	std::shared_ptr<DirectCommandList> direct_command_list_;
 };

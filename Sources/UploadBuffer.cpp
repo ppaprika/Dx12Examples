@@ -3,7 +3,7 @@
 #include <D3DX12/d3dx12_core.h>
 #include <D3DX12/d3dx12_resource_helpers.h>
 
-#include "CommandList.h"
+#include "DirectCommandList.h"
 #include "Helpers.h"
 
 

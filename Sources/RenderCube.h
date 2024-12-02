@@ -3,6 +3,7 @@
 #include <DirectXMath.h>
 
 #include "Game.h"
+#include "SimpleCube.h"
 #include "TextureLoader.h"
 
 using namespace DirectX;
@@ -50,6 +51,8 @@ private:
 
 	ComPtr<ID3D12RootSignature> root_signature_;
 	ComPtr<ID3D12PipelineState> pipeline_state_;
+
+	std::shared_ptr<SimpleCube> cube_;
 
 	bool init_ = false;
 };

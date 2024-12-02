@@ -2,7 +2,7 @@
 
 #include "Application.h"
 #include "Helpers.h"
-#include "CommandList.h"
+#include "DirectCommandList.h"
 
 Window::Window(std::shared_ptr<Game> Owner, const CreateWindowParams& Params)
 {

@@ -8,7 +8,7 @@
 
 #include "Window.h"
 #include "Application.h"
-#include "CommandList.h"
+#include "DirectCommandList.h"
 #include "DirectXTex.h"
 #include "Helpers.h"
 #include "UploadBuffer.h"
@@ -40,110 +40,7 @@ void RenderCube::Init()
 
 	ComPtr<ID3D12Device> device = app_.lock()->GetDevice();
 
-	vertex_buffer_view_.Init(sizeof(vertices), 64, sizeof(VertexPosColor), vertices, upload_buffer_);
-	index_buffer_view_.Init(sizeof(indicies), 0, DXGI_FORMAT_R16_UINT, indicies, upload_buffer_);
-
-	ComPtr<ID3DBlob> vertexShader;
-	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertexShader));
-
-	ComPtr<ID3DBlob> pixelShader;
-	ThrowIfFailed(D3DReadFileToBlob(L"PixelShader.cso", &pixelShader));
-
-	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-		{"MYPOSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"MYTEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
-	};
-
-	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
-	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
-	{
-		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-	}
-
-	// create root signature
-	CD3DX12_DESCRIPTOR_RANGE1 descriptorRange[1] = {};
-	descriptorRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
-
-	CD3DX12_ROOT_PARAMETER1 rootParameter[2] = {};
-	rootParameter[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameter[1].InitAsDescriptorTable(1, &descriptorRange[0], D3D12_SHADER_VISIBILITY_PIXEL);
-	// inline descriptor
-	//rootParameter[1].InitAsShaderResourceView(0);
-
-	// create static sampler
-	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
-	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.MaxAnisotropy = 1;
-	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	samplerDesc.MinLOD = 0;
-	samplerDesc.MaxLOD = D3D12_FLOAT32_MAX;
-	samplerDesc.ShaderRegister = 0;
-	samplerDesc.RegisterSpace = 0;
-	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
-
-	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription = {};
-	rootSignatureDescription.Init_1_1(_countof(rootParameter), rootParameter, 1, &samplerDesc, rootSignatureFlags);
-
-	ComPtr<ID3DBlob> rootSignatureBlob;
-	ComPtr<ID3DBlob> errorBlob;
-	ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription, featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
-
-	ThrowIfFailed(device->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&root_signature_)));
-
-	// create PSO
-	struct PipelineStateStream
-	{
-		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
-		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
-		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopology;
-		CD3DX12_PIPELINE_STATE_STREAM_VS VS;
-		CD3DX12_PIPELINE_STATE_STREAM_PS PS;
-		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
-		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
-	} pipelineStateStream;
-
-	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
-	rtvFormats.NumRenderTargets = 1;
-	rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	pipelineStateStream.pRootSignature = root_signature_.Get();
-	pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
-	pipelineStateStream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-	pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	pipelineStateStream.RTVFormats = rtvFormats;
-
-	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {};
-	pipelineStateStreamDesc.pPipelineStateSubobjectStream = &pipelineStateStream;
-	pipelineStateStreamDesc.SizeInBytes = sizeof(PipelineStateStream);
-
-	ComPtr<ID3D12Device2> device2;
-	ThrowIfFailed(device.As(&device2));
-	ThrowIfFailed(device2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipeline_state_)));
-
-	// load texture to srv
-	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 1;
-	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	ThrowIfFailed(device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv_desc_heap_)));
-	D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = srv_desc_heap_->GetCPUDescriptorHandleForHeapStart();
-	TextureLoader::LoadTextureFromFile(Application::GetDevice(), direct_command_list_->GetCommandList(), L"../../resources/Texture.jpg", texture_resource_, srvHandle);
-	direct_command_list_->SingleAndWait();
-
+	cube_ = std::make_shared<SimpleCube>(upload_buffer_, direct_command_list_);
 	init_ = true;
 }
 
@@ -171,32 +68,10 @@ void RenderCube::Render()
 {
 	Game::Render();
 
-	DrawWindowParams Params = {};
-	Params.IndexBufferView = index_buffer_view_.GetIndexBufferView();
-	Params.VertexBufferView = vertex_buffer_view_.GetVertexBufferView();
-	Params.DrawNum = _countof(indicies);
-	Params.PSO = pipeline_state_;
-	Params.RootSignature = root_signature_;
-	Params.SetRootConstant = [this](ComPtr<ID3D12GraphicsCommandList2> CommandList)
-		{
-			XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
-			mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
-		// inline constant
-			CommandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvpMatrix, 0);
-		// descriptor table
-			CommandList->SetDescriptorHeaps(1, srv_desc_heap_.GetAddressOf());
-			CommandList->SetGraphicsRootDescriptorTable(1, srv_desc_heap_->GetGPUDescriptorHandleForHeapStart());
-
-		// inline descriptor
-		// CommandList->SetGraphicsRootShaderResourceView(1, texture_resource_.texture->GetGPUVirtualAddress());
-		// should use
-		// ByteAddressBuffer texture : register(t0);
-		// instead of
-		// Texture2D texture : register(t0);
-		// in pixel shader
-		};
-
-	direct_command_list_->DrawToWindow(window_, Params);
+	XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
+	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
+	cube_->mvp_matrix = mvpMatrix;
+	direct_command_list_->DrawSinglePrimitiveToWindow(window_, cube_.get());
 }
 
 void RenderCube::Release()

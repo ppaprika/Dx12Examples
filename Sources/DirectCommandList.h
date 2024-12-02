@@ -5,6 +5,7 @@
 #include <D3DX12/d3d12.h>
 #include <wrl/client.h>
 
+class Primitive;
 using Microsoft::WRL::ComPtr;
 
 struct DrawWindowParams
@@ -12,25 +13,27 @@ struct DrawWindowParams
 	ComPtr<ID3D12PipelineState> PSO = nullptr;
 	ComPtr<ID3D12RootSignature> RootSignature = nullptr;
 
-	D3D12_VERTEX_BUFFER_VIEW VertexBufferView = {};
-	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
+	const D3D12_VERTEX_BUFFER_VIEW* VertexBufferView = {};
+	const D3D12_INDEX_BUFFER_VIEW* IndexBufferView = {};
 
 	SIZE_T DrawNum = 0;
 
 	std::function<void(ComPtr<ID3D12GraphicsCommandList2>)> SetRootConstant;
 };
 
-class CommandList
+class DirectCommandList : public std::enable_shared_from_this<DirectCommandList>
 {
 public:
-	CommandList(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type, int numOfAllocators);
-	~CommandList();
+	DirectCommandList(ComPtr<ID3D12Device> device, D3D12_COMMAND_LIST_TYPE type, int numOfAllocators);
+	~DirectCommandList();	
 
 	void SingleAndWait();
 
 	ComPtr<ID3D12GraphicsCommandList2> GetCommandList() { return _commandList; }
 
-	void DrawToWindow(std::shared_ptr<class Window> Window, DrawWindowParams& Params);
+	void DrawToWindow(std::shared_ptr<class Window> window, DrawWindowParams& params);
+
+	void DrawSinglePrimitiveToWindow(std::shared_ptr<class Window> window, Primitive* primitive);
 
 public:
 	void InitCommandQueue();

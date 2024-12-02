@@ -6,7 +6,7 @@
 #include <D3DX12/d3dx12_resource_helpers.h>
 
 #include "Application.h"
-#include "CommandList.h"
+#include "DirectCommandList.h"
 #include "Helpers.h"
 #include "UploadBuffer.h"
 #include "Window.h"
@@ -41,8 +41,9 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 
 	app_ = App;
 	upload_buffer_ = std::make_shared<UploadBuffer>(App->GetDevice());
-	direct_command_list_ = std::make_shared<CommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params->numOfBackBuffers);
+	direct_command_list_ = std::make_shared<DirectCommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params->numOfBackBuffers);
 	Params->command_list = direct_command_list_;
+
 	if(Params)
 	{
 		Params->winProc = Game::StaticWinProc;

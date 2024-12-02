@@ -8,7 +8,7 @@
 
 #include "Game.h"
 
-class CommandList;
+class DirectCommandList;
 using Microsoft::WRL::ComPtr;
 
 
@@ -27,7 +27,7 @@ struct CreateWindowParams
 	int nCmdShow;
 	int numOfBackBuffers;
 
-	std::shared_ptr<CommandList> command_list;
+	std::shared_ptr<DirectCommandList> command_list;
 };
 
 class Window
@@ -52,7 +52,7 @@ public:
 	UINT _numOfBackBuffers;
 	UINT _currentBackBuffer;
 
-	std::shared_ptr<CommandList> _commandList;
+	std::shared_ptr<DirectCommandList> _commandList;
 
 	ComPtr<IDXGISwapChain3> _swapChain;
 

@@ -30,7 +30,7 @@
     <ClCompile Include="Sources\RenderCube.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\CommandList.cpp">
+    <ClCompile Include="Sources\DirectCommandList.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\Window.cpp">
@@ -54,6 +54,12 @@
     <ClCompile Include="Sources\FPCamera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\Primitive.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Sources\SimpleCube.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\PixelShader.hlsl">
@@ -73,7 +79,7 @@
     <ClInclude Include="Sources\RenderCube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\CommandList.h">
+    <ClInclude Include="Sources\DirectCommandList.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Sources\Window.h">
@@ -98,6 +104,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Sources\FPCamera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\Primitive.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\SimpleCube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

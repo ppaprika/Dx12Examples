@@ -133,10 +133,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Application.cpp" />
-    <ClCompile Include="Sources\CommandList.cpp" />
+    <ClCompile Include="Sources\DirectCommandList.cpp" />
     <ClCompile Include="Sources\FPCamera.cpp" />
     <ClCompile Include="Sources\Game.cpp" />
     <ClCompile Include="Sources\IndexBufferView.cpp" />
+    <ClCompile Include="Sources\Primitive.cpp" />
     <ClCompile Include="Sources\Project1_main.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -144,6 +145,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Sources\RenderCube.cpp" />
+    <ClCompile Include="Sources\SimpleCube.cpp" />
     <ClCompile Include="Sources\TextureLoader.cpp" />
     <ClCompile Include="Sources\UploadBuffer.cpp" />
     <ClCompile Include="Sources\VertexBufferView.cpp" />
@@ -161,13 +163,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Application.h" />
-    <ClInclude Include="Sources\CommandList.h" />
+    <ClInclude Include="Sources\DirectCommandList.h" />
     <ClInclude Include="Sources\Defines.h" />
     <ClInclude Include="Sources\FPCamera.h" />
     <ClInclude Include="Sources\Game.h" />
     <ClInclude Include="Sources\Helpers.h" />
     <ClInclude Include="Sources\IndexBufferView.h" />
+    <ClInclude Include="Sources\Primitive.h" />
     <ClInclude Include="Sources\RenderCube.h" />
+    <ClInclude Include="Sources\SimpleCube.h" />
     <ClInclude Include="Sources\TextureLoader.h" />
     <ClInclude Include="Sources\UploadBuffer.h" />
     <ClInclude Include="Sources\VertexBufferView.h" />
