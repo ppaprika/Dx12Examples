@@ -11,16 +11,6 @@ using namespace DirectX;
 class RenderCube : public Game
 {
 public:
-	struct VertexPosColor
-	{
-		XMFLOAT3 Position;
-		XMFLOAT3 Color;
-		XMFLOAT2 TexCoord;
-	};
-
-	static VertexPosColor vertices[8];
-	static WORD indicies[36];
-
 	virtual void Init() override;
 	virtual void Update() override;
 	virtual void Render() override;
@@ -42,15 +32,6 @@ private:
 	XMMATRIX g_model_matrix_ = {};
 	XMMATRIX g_view_matrix_ = {};
 	XMMATRIX g_projection_matrix_ = {};
-
-	VertexBufferView vertex_buffer_view_;
-	IndexBufferView index_buffer_view_;
-
-	TextureLoader::TextureResource texture_resource_ = {};
-	ComPtr<ID3D12DescriptorHeap> srv_desc_heap_;
-
-	ComPtr<ID3D12RootSignature> root_signature_;
-	ComPtr<ID3D12PipelineState> pipeline_state_;
 
 	std::shared_ptr<SimpleCube> cube_;
 

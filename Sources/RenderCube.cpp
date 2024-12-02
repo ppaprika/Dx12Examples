@@ -2,9 +2,7 @@
 
 #include <d3dcompiler.h>
 #include <windowsx.h>
-#include <D3DX12/d3dx12_barriers.h>
 #include <D3DX12/d3dx12_pipeline_state_stream.h>
-#include <D3DX12/d3dx12_root_signature.h>
 
 #include "Window.h"
 #include "Application.h"
@@ -12,27 +10,6 @@
 #include "DirectXTex.h"
 #include "Helpers.h"
 #include "UploadBuffer.h"
-
-RenderCube::VertexPosColor RenderCube::vertices[8] = {
-	{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, 0.0f), XMFLOAT2(0, 1)}, // 0
-	{ XMFLOAT3(-1.0f,  1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f),  XMFLOAT2(0, 0) }, // 1
-	{ XMFLOAT3(1.0f,  1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(1, 0) }, // 2
-	{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) , XMFLOAT2(1, 1)}, // 3
-	{ XMFLOAT3(-1.0f, -1.0f,  1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT2(0, 1) }, // 4
-	{ XMFLOAT3(-1.0f,  1.0f,  1.0f), XMFLOAT3(0.0f, 1.0f, 1.0f) , XMFLOAT2(0, 0)}, // 5
-	{XMFLOAT3(1.0f,  1.0f,  1.0f), XMFLOAT3(1.0f, 1.0f, 1.0f) , XMFLOAT2(1, 0)}, // 6
-	{ XMFLOAT3(1.0f, -1.0f,  1.0f), XMFLOAT3(1.0f, 0.0f, 1.0f) , XMFLOAT2(1, 1)}  // 7
-};
-
-WORD RenderCube::indicies[36] =
-{
-	0, 1, 2, 0, 2, 3,
-	4, 6, 5, 4, 7, 6,
-	4, 5, 1, 4, 1, 0,
-	3, 2, 6, 3, 6, 7,
-	1, 5, 6, 1, 6, 2,
-	4, 0, 3, 4, 3, 7
-};
 
 void RenderCube::Init()
 {
