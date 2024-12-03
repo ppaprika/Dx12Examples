@@ -33,7 +33,7 @@ struct CreateWindowParams
 class Window
 {
 public:
-	Window(std::shared_ptr<Game> Owner, const CreateWindowParams& Params);
+	Window(const CreateWindowParams& Params);
 	virtual ~Window();
 
 	HWND GetWindow() { return window_; }
@@ -42,34 +42,34 @@ public:
 
 	int GetHeight() { return height_; }
 
-	void InitWindow();
 
 	void UpdateSize(int width, int height);
 
-	void Flush();
+	ComPtr<ID3D12Resource> GetCurrentBackBuffer();
 
+	D3D12_CPU_DESCRIPTOR_HANDLE GetDSVHandle();
 
-	UINT _numOfBackBuffers;
-	UINT _currentBackBuffer;
+	D3D12_CPU_DESCRIPTOR_HANDLE GetRTVHandle();
 
-	std::shared_ptr<DirectCommandList> _commandList;
+	UINT num_of_back_buffers;
+	UINT current_back_buffer;
 
-	ComPtr<IDXGISwapChain3> _swapChain;
+	ComPtr<IDXGISwapChain3> swap_chain;
 
-	std::vector<ComPtr<ID3D12Resource>> _backBuffers;
+	std::vector<ComPtr<ID3D12Resource>> back_buffers;
 	ComPtr<ID3D12DescriptorHeap> rtv_heap;
 
-	ComPtr<ID3D12Resource> _depthBuffer;
+	ComPtr<ID3D12Resource> depth_buffer;
 	ComPtr<ID3D12DescriptorHeap> dsv_heap;
 
-	CD3DX12_VIEWPORT _viewport;
-	D3D12_RECT _d3d12Rect;
+	CD3DX12_VIEWPORT viewport;
+	D3D12_RECT d3d12_rect;
 
 private:
 	int width_;
 	int height_;
 	HWND window_;
-	std::weak_ptr<Game> owner_;
+	std::weak_ptr<DirectCommandList> owner_;
 
 	void InitViewportAndRect();
 	void InitDepth();

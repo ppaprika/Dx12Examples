@@ -41,15 +41,12 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 
 	app_ = App;
 	upload_buffer_ = std::make_shared<UploadBuffer>(App->GetDevice());
+
 	direct_command_list_ = std::make_shared<DirectCommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params->numOfBackBuffers);
 	Params->command_list = direct_command_list_;
+	Params->winProc = Game::StaticWinProc;
+	direct_command_list_->CreateTargetWindow(Params);
 
-	if(Params)
-	{
-		Params->winProc = Game::StaticWinProc;
-		window_ = std::make_shared<Window>(shared_from_this(), *Params);
-		window_->InitWindow();
-	}
 	Init();
 
 	MSG msg = {};
@@ -64,7 +61,7 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 
 void Game::Release()
 {
-	window_->Flush();
+	direct_command_list_->SingleAndWait();
 }
 
 LRESULT Game::StaticWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
@@ -86,9 +83,14 @@ ComPtr<ID3D12Device> Game::GetDevice()
 	return nullptr;
 }
 
+void Game::Flush()
+{
+	direct_command_list_->SingleAndWait();
+}
+
 void Game::UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> commandList, ID3D12Resource** pDestinationResource,
-	ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData,
-	D3D12_RESOURCE_FLAGS flags, ComPtr<ID3D12Device> device)
+                                ID3D12Resource** pIntermediateResource, size_t numElements, size_t elementSize, const void* bufferData,
+                                D3D12_RESOURCE_FLAGS flags, ComPtr<ID3D12Device> device)
 {
 	size_t bufferSize = numElements * elementSize;
 

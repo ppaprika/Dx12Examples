@@ -37,7 +37,7 @@ void RenderCube::Update()
 	XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
 	g_view_matrix_ = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
-	float aspectRatio = window_->GetWidth() / static_cast<float>(window_->GetHeight());
+	float aspectRatio = direct_command_list_->GetTargetWindowWidth() / static_cast<float>(direct_command_list_->GetTargetWindowHeight());
 	g_projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspectRatio, 0.1f, 100.0f);
 }
 
@@ -48,7 +48,7 @@ void RenderCube::Render()
 	XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
 	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
 	cube_->mvp_matrix = mvpMatrix;
-	direct_command_list_->DrawSinglePrimitiveToWindow(window_, cube_.get());
+	direct_command_list_->DrawSinglePrimitive(cube_.get());
 }
 
 void RenderCube::Release()
@@ -64,7 +64,7 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 	}
 	
 
-	HWND hWnd = window_->GetWindow();
+	HWND hWnd = direct_command_list_->GetTargetWindow()->GetWindow();
 
 	switch (InMessage)
 	{
@@ -136,7 +136,7 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 			//char buffer[500];
 			//sprintf_s(buffer, "width: %d, height: %d \n", width, height);
 			//OutputDebugStringA(buffer);
-			window_->UpdateSize(width, height);
+			direct_command_list_->GetTargetWindow()->UpdateSize(width, height);
 		}
 		break;
 	}

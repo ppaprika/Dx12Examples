@@ -3,6 +3,8 @@
 
 #include "Primitive.h"
 
+class DirectCommandList;
+
 class SimpleCube : public Primitive
 {
 public:

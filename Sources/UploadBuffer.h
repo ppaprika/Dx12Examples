@@ -1,15 +1,12 @@
 #pragma once
 #include <deque>
-#include <map>
 #include <memory>
-#include <unordered_map>
 #include <vector>
 #include <D3DX12/d3d12.h>
 #include <wrl/client.h>
 
 #include "Defines.h"
 
-class DirectCommandList;
 using Microsoft::WRL::ComPtr;
 
 class UploadBuffer : public std::enable_shared_from_this<UploadBuffer>

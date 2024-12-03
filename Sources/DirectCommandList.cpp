@@ -22,6 +22,11 @@ DirectCommandList::DirectCommandList(Microsoft::WRL::ComPtr<ID3D12Device> device
 	InitFence();
 }
 
+void DirectCommandList::CreateTargetWindow(CreateWindowParams* Params)
+{
+	window = std::make_shared<Window>(*Params);
+}
+
 DirectCommandList::~DirectCommandList()
 {
 	for(auto& allocator : _commandAllocators)
@@ -46,108 +51,27 @@ void DirectCommandList::SingleAndWait()
 }
 
 
-void DirectCommandList::DrawToWindow(std::shared_ptr<class Window> window, DrawWindowParams& params)
+void DirectCommandList::DrawSinglePrimitive(Primitive* primitive)
 {
-	if(window->_numOfBackBuffers != _numOfAllocators)
+	if (window->num_of_back_buffers != _numOfAllocators)
 	{
 		char buffer[200];
-		sprintf_s(buffer,200, "Error: Window's back buffer num %d is not equal to CommandList's allocator num %d !\n", window->_numOfBackBuffers, _numOfAllocators);
+		sprintf_s(buffer, 200, "Error: Window's back buffer num %d is not equal to CommandList's allocator num %d !\n", window->num_of_back_buffers, _numOfAllocators);
 		OutputDebugStringA(buffer);
 		return;
 	}
 
-	CD3DX12_VIEWPORT& viewport = window->_viewport;
-	D3D12_RECT& d3d12Rect = window->_d3d12Rect;
-	std::vector<ComPtr<ID3D12Resource>>& backBuffers = window->_backBuffers;
-	UINT& currentBackBuffer = window->_currentBackBuffer;
+	CD3DX12_VIEWPORT& viewport = window->viewport;
+	D3D12_RECT& d3d12Rect = window->d3d12_rect;
+	UINT& currentBackBuffer = window->current_back_buffer;
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap = window->rtv_heap;
-	ComPtr<IDXGISwapChain3> swapChain = window->_swapChain;
-	auto dsv = window->dsv_heap->GetCPUDescriptorHandleForHeapStart();
+	ComPtr<IDXGISwapChain3> swapChain = window->swap_chain;
 
-	SIZE_T heapSize = Application::GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	auto dsv = window->GetDSVHandle();
+	ComPtr<ID3D12Resource> backBuffer = window->GetCurrentBackBuffer();
+	auto rtv = window->GetRTVHandle();
 
-	ComPtr<ID3D12Resource> backBuffer = backBuffers[currentBackBuffer];
 	ComPtr<ID3D12CommandAllocator> allocator = _commandAllocators[currentBackBuffer];
-	auto rtv = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	rtv.ptr += currentBackBuffer * heapSize;
-
-	_commandList->Reset(allocator.Get(), nullptr);
-
-	// clear render target
-	{
-		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		_commandList->ResourceBarrier(1, &barrier);
-
-		// clear color
-		FLOAT color[4] = { 0.f, 0.f, 0.f, 1 };
-		_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
-
-		_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-	}
-
-	
-	_commandList->SetPipelineState(params.PSO.Get());
-	_commandList->SetGraphicsRootSignature(params.RootSignature.Get());
-	_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	_commandList->IASetIndexBuffer(params.IndexBufferView);
-	_commandList->IASetVertexBuffers(0, 1, params.VertexBufferView);
-	params.SetRootConstant(_commandList);
-
-	_commandList->RSSetViewports(1, &viewport);
-	_commandList->RSSetScissorRects(1, &d3d12Rect);
-
-	_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
-
-	_commandList->DrawIndexedInstanced(params.DrawNum, 1, 0, 0, 0);
-	// present
-	{
-		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-		_commandList->ResourceBarrier(1, &barrier);
-		_commandList->Close();
-
-		ID3D12CommandList* lists[] = { _commandList.Get() };
-		_commandQueue->ExecuteCommandLists(1, lists);
-		_commandQueue->Signal(_fence.Get(), _fenceValue);
-		_waitingValue[currentBackBuffer] = _fenceValue;
-		_fenceValue++;
-
-		swapChain->Present(1, 0);
-
-		currentBackBuffer = swapChain->GetCurrentBackBufferIndex();
-		UINT waitValue = _waitingValue[currentBackBuffer];
-		if (_fence->GetCompletedValue() < waitValue)
-		{
-			HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-			_fence->SetEventOnCompletion(waitValue, hEvent);
-			WaitForSingleObject(hEvent, INFINITE);
-		}
-	}
-}
-
-void DirectCommandList::DrawSinglePrimitiveToWindow(std::shared_ptr<class Window> window, Primitive* primitive)
-{
-	if (window->_numOfBackBuffers != _numOfAllocators)
-	{
-		char buffer[200];
-		sprintf_s(buffer, 200, "Error: Window's back buffer num %d is not equal to CommandList's allocator num %d !\n", window->_numOfBackBuffers, _numOfAllocators);
-		OutputDebugStringA(buffer);
-		return;
-	}
-
-	CD3DX12_VIEWPORT& viewport = window->_viewport;
-	D3D12_RECT& d3d12Rect = window->_d3d12Rect;
-	std::vector<ComPtr<ID3D12Resource>>& backBuffers = window->_backBuffers;
-	UINT& currentBackBuffer = window->_currentBackBuffer;
-	ComPtr<ID3D12DescriptorHeap> descriptorHeap = window->rtv_heap;
-	ComPtr<IDXGISwapChain3> swapChain = window->_swapChain;
-	auto dsv = window->dsv_heap->GetCPUDescriptorHandleForHeapStart();
-
-	SIZE_T heapSize = Application::GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-
-	ComPtr<ID3D12Resource> backBuffer = backBuffers[currentBackBuffer];
-	ComPtr<ID3D12CommandAllocator> allocator = _commandAllocators[currentBackBuffer];
-	auto rtv = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	rtv.ptr += currentBackBuffer * heapSize;
 
 	_commandList->Reset(allocator.Get(), nullptr);
 
@@ -162,13 +86,13 @@ void DirectCommandList::DrawSinglePrimitiveToWindow(std::shared_ptr<class Window
 
 		_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	}
+	_commandList->RSSetViewports(1, &viewport);
+	_commandList->RSSetScissorRects(1, &d3d12Rect);
+	_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 
 	primitive->PrepareForDrawing(_commandList);
 	primitive->SetRootParams(_commandList);
 
-	_commandList->RSSetViewports(1, &viewport);
-	_commandList->RSSetScissorRects(1, &d3d12Rect);
-	_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 	_commandList->DrawIndexedInstanced(primitive->GetIndexCount(), 1, 0, 0, 0);
 	// present
 	{
@@ -194,6 +118,28 @@ void DirectCommandList::DrawSinglePrimitiveToWindow(std::shared_ptr<class Window
 		}
 	}
 }
+
+void DirectCommandList::Reset(std::shared_ptr<class Window> window)
+{
+	current_window = window;
+
+}
+
+void DirectCommandList::Draw(Primitive* primitive)
+{
+
+}
+
+void DirectCommandList::Present()
+{
+
+}
+
+int DirectCommandList::GetTargetWindowWidth() const
+{ return window->GetWidth(); }
+
+int DirectCommandList::GetTargetWindowHeight() const
+{ return window->GetHeight(); }
 
 void DirectCommandList::InitCommandQueue()
 {

@@ -6,15 +6,15 @@
 #include <D3DX12/d3d12.h>
 #include <wrl/client.h>
 
-#include "IndexBufferView.h"
+//#include "DirectCommandList.h"
 #include "UploadBuffer.h"
-#include "VertexBufferView.h"
 
 
 class UploadBuffer;
 class Application;
 class Window;
 struct CreateWindowParams;
+class DirectCommandList;
 using Microsoft::WRL::ComPtr;
 
 
@@ -45,6 +45,8 @@ public:
 	void SetShowFps(bool NewShowFps) { show_fps_ = NewShowFps; }
 	ComPtr<ID3D12Device> GetDevice();
 
+	void Flush();
+
 	// deprecated
 	void UpdateBufferResource(
 		ComPtr<ID3D12GraphicsCommandList2> commandList,
@@ -56,7 +58,6 @@ public:
 	// todo make it private
 protected:
 	std::weak_ptr<Application> app_;
-	std::shared_ptr<Window> window_;
 	bool show_fps_ = true;
 	std::chrono::time_point<std::chrono::steady_clock> last_tick_;
 	std::shared_ptr<UploadBuffer> upload_buffer_;
