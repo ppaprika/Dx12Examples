@@ -22,6 +22,8 @@ public:
 	virtual void SetRootParams(ComPtr<ID3D12GraphicsCommandList2> commandList);
 
 	virtual size_t GetIndexCount() const = 0;
+
+	virtual void Draw(ComPtr<ID3D12GraphicsCommandList2> commandList) = 0;
 protected:
 	VertexBufferView vertex_buffer_view_;
 	IndexBufferView index_buffer_view_;

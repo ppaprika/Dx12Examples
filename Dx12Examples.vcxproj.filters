@@ -27,7 +27,7 @@
     <ClCompile Include="Sources\Game.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Sources\RenderCube.cpp">
+    <ClCompile Include="Sources\DragAndCheck.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Sources\DirectCommandList.cpp">
@@ -60,12 +60,18 @@
     <ClCompile Include="Sources\SimpleCube.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Sources\InstancedSimpleCube.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\PixelShader.hlsl">
       <Filter>Resource Files\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="shaders\VertexShader.hlsl">
+      <Filter>Resource Files\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\InstancedVertexShader.hlsl">
       <Filter>Resource Files\Shaders</Filter>
     </FxCompile>
   </ItemGroup>
@@ -76,7 +82,7 @@
     <ClInclude Include="Sources\Game.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Sources\RenderCube.h">
+    <ClInclude Include="Sources\DragAndCheck.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Sources\DirectCommandList.h">
@@ -110,6 +116,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Sources\SimpleCube.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Sources\InstancedSimpleCube.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

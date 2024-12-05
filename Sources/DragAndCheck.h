@@ -3,12 +3,15 @@
 #include <DirectXMath.h>
 
 #include "Game.h"
+#include "InstancedSimpleCube.h"
 #include "SimpleCube.h"
 #include "TextureLoader.h"
 
 using namespace DirectX;
 
-class RenderCube : public Game
+#define MODELCLASS InstancedSimpleCube
+
+class DragAndCheck : public Game
 {
 public:
 	virtual void Init() override;
@@ -17,7 +20,7 @@ public:
 	virtual void Release() override;
 	virtual LRESULT WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam) override;
 
-private:
+protected:
 	struct MouseTracker
 	{
 		bool mouse_left_button_down;
@@ -33,7 +36,7 @@ private:
 	XMMATRIX g_view_matrix_ = {};
 	XMMATRIX g_projection_matrix_ = {};
 
-	std::shared_ptr<SimpleCube> cube_;
+	std::shared_ptr<MODELCLASS> cube_;
 
 	bool init_ = false;
 };

@@ -119,20 +119,62 @@ void DirectCommandList::DrawSinglePrimitive(Primitive* primitive)
 	}
 }
 
-void DirectCommandList::Reset(std::shared_ptr<class Window> window)
+void DirectCommandList::Reset()
 {
 	current_window = window;
 
+	auto dsv = window->GetDSVHandle();
+	ComPtr<ID3D12Resource> backBuffer = window->GetCurrentBackBuffer();
+	auto rtv = window->GetRTVHandle();
+
+	ComPtr<ID3D12CommandAllocator> allocator = _commandAllocators[window->current_back_buffer];
+
+	_commandList->Reset(allocator.Get(), nullptr);
+
+	// clear render target
+	{
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		_commandList->ResourceBarrier(1, &barrier);
+
+		// clear color
+		FLOAT color[4] = { 0.6f, 0.2f, 0.2f, 1 };
+		_commandList->ClearRenderTargetView(rtv, color, 0, nullptr);
+
+		_commandList->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	}
+	_commandList->RSSetViewports(1, &window->viewport);
+	_commandList->RSSetScissorRects(1, &window->d3d12_rect);
+	_commandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
 }
 
 void DirectCommandList::Draw(Primitive* primitive)
 {
-
+	primitive->PrepareForDrawing(_commandList);
+	primitive->Draw(_commandList);
 }
 
 void DirectCommandList::Present()
 {
+	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(window->GetCurrentBackBuffer().Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	_commandList->ResourceBarrier(1, &barrier);
+	_commandList->Close();
 
+	ID3D12CommandList* lists[] = { _commandList.Get() };
+	_commandQueue->ExecuteCommandLists(1, lists);
+	_commandQueue->Signal(_fence.Get(), _fenceValue);
+	_waitingValue[window->current_back_buffer] = _fenceValue;
+	_fenceValue++;
+
+	window->swap_chain->Present(1, 0);
+
+	window->current_back_buffer = window->swap_chain->GetCurrentBackBufferIndex();
+	UINT waitValue = _waitingValue[window->current_back_buffer];
+	if (_fence->GetCompletedValue() < waitValue)
+	{
+		HANDLE hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+		_fence->SetEventOnCompletion(waitValue, hEvent);
+		WaitForSingleObject(hEvent, INFINITE);
+	}
 }
 
 int DirectCommandList::GetTargetWindowWidth() const

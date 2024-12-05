@@ -1,16 +1,15 @@
 #pragma once
 
-
 #include "Primitive.h"
 
-class DirectCommandList;
 
-class SimpleCube : public Primitive
+
+class InstancedSimpleCube : public Primitive
 {
 public:
 	size_t GetIndexCount() const override { return _countof(indexes_); }
 
-	SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<DirectCommandList> commandList);
+	InstancedSimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<class DirectCommandList> commandList);
 
 	void SetRootParams(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
 
@@ -18,6 +17,10 @@ public:
 
 	XMMATRIX mvp_matrix;
 private:
+	struct InstanceData
+	{
+		XMFLOAT4X4 world;
+	};
 
 	struct VertexPosColor
 	{
@@ -46,4 +49,7 @@ private:
 		1, 5, 6, 1, 6, 2,
 		4, 0, 3, 4, 3, 7
 	};
+
+	XMMATRIX instance_pos_[4];
 };
+

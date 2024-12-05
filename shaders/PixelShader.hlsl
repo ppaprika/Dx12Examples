@@ -1,7 +1,7 @@
 struct PixelShaderInput
 {
     float4 Position : SV_Position;
-    float2 TexCoord : TEXCOO;
+    float2 TexCoord : TEXCOORD;
 };
 
 Texture2D g_texture : register(t0);

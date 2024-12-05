@@ -1,4 +1,4 @@
-#include "RenderCube.h"
+#include "DragAndCheck.h"
 
 #include <d3dcompiler.h>
 #include <windowsx.h>
@@ -11,17 +11,17 @@
 #include "Helpers.h"
 #include "UploadBuffer.h"
 
-void RenderCube::Init()
+void DragAndCheck::Init()
 {
 	Game::Init();
 
 	ComPtr<ID3D12Device> device = app_.lock()->GetDevice();
 
-	cube_ = std::make_shared<SimpleCube>(upload_buffer_, direct_command_list_);
+	cube_ = std::make_shared<MODELCLASS>(upload_buffer_, direct_command_list_);
 	init_ = true;
 }
 
-void RenderCube::Update()
+void DragAndCheck::Update()
 {
 	Game::Update();
 
@@ -41,28 +41,30 @@ void RenderCube::Update()
 	g_projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspectRatio, 0.1f, 100.0f);
 }
 
-void RenderCube::Render()
+void DragAndCheck::Render()
 {
 	Game::Render();
 
 	XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
 	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
 	cube_->mvp_matrix = mvpMatrix;
-	direct_command_list_->DrawSinglePrimitive(cube_.get());
+
+	direct_command_list_->Reset();
+	direct_command_list_->Draw(cube_.get());
+	direct_command_list_->Present();
 }
 
-void RenderCube::Release()
+void DragAndCheck::Release()
 {
 	Game::Release();
 }
 
-LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
+LRESULT DragAndCheck::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
 {
 	if(!init_)
 	{
 		return Game::WinProc(InHwnd, InMessage, InWParam, InLParam);
 	}
-	
 
 	HWND hWnd = direct_command_list_->GetTargetWindow()->GetWindow();
 
@@ -71,7 +73,6 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 	case WM_PAINT:
 		Update();
 		Render();
-		//RenderCleanColor();
 		return 0;
 	case WM_LBUTTONDOWN:
 	{
@@ -79,7 +80,6 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 		mouse_tracker_.mouse_left_button_down = true;
 		mouse_tracker_.last_pos.x = GET_X_LPARAM(InLParam);
 		mouse_tracker_.last_pos.y = GET_Y_LPARAM(InLParam);
-
 
 		//char buffer[] = "Mouse Button Down.\n";
 		//OutputDebugStringA(buffer);
@@ -109,7 +109,6 @@ LRESULT RenderCube::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 		}
 		mouse_tracker_.mouse_left_button_down = false;
 		mouse_tracker_.delta_pos = { 0, 0 };
-
 
 		//char buffer[] = "Mouse Button Up.\n";
 		//OutputDebugStringA(buffer);

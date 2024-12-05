@@ -25,7 +25,7 @@ public:
 
 	void DrawSinglePrimitive(Primitive* primitive);
 
-	void Reset(std::shared_ptr<Window> window);
+	void Reset();
 	void Draw(Primitive* primitive);
 	void Present();
 

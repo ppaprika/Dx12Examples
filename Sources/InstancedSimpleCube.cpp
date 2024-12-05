@@ -1,4 +1,5 @@
-#include "SimpleCube.h"
+
+#include "InstancedSimpleCube.h"
 
 #include <d3dcompiler.h>
 #include <D3DX12/d3dx12_pipeline_state_stream.h>
@@ -7,17 +8,15 @@
 #include "Application.h"
 #include "Helpers.h"
 #include "DirectCommandList.h"
-#include "DragAndCheck.h"
 
 
-
-SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<DirectCommandList> commandList): Primitive()
+InstancedSimpleCube::InstancedSimpleCube(std::shared_ptr<UploadBuffer> buffer,
+                                         std::shared_ptr<class DirectCommandList> commandList)
 {
-
 	vertex_buffer_view_.Init(sizeof(vertexes_), 64, sizeof(VertexPosColor), vertexes_, buffer);
 	index_buffer_view_.Init(sizeof(indexes_), 0, DXGI_FORMAT_R16_UINT, indexes_, buffer);
 
-	ThrowIfFailed(D3DReadFileToBlob(L"VertexShader.cso", &vertex_shader_));
+	ThrowIfFailed(D3DReadFileToBlob(L"InstancedVertexShader.cso", &vertex_shader_));
 	ThrowIfFailed(D3DReadFileToBlob(L"PixelShader.cso", &pixel_shader_));
 
 	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
@@ -37,9 +36,10 @@ SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<Dir
 	CD3DX12_DESCRIPTOR_RANGE1 descriptorRange[1] = {};
 	descriptorRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
 
-	CD3DX12_ROOT_PARAMETER1 rootParameter[2] = {};
+	CD3DX12_ROOT_PARAMETER1 rootParameter[3] = {};
 	rootParameter[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 	rootParameter[1].InitAsDescriptorTable(1, &descriptorRange[0], D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameter[2].InitAsConstants(sizeof(XMMATRIX) / 4, 1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
 	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -115,19 +115,27 @@ SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<Dir
 
 	// init mvp matrix
 	mvp_matrix = XMMatrixIdentity();
+
+	for(int i = 0; i < _countof(instance_pos_); ++i)
+	{
+		instance_pos_[i] = XMMatrixTranslation(i * 0.5f - 1, 0, 0);
+	}
 }
 
-void SimpleCube::SetRootParams(ComPtr<ID3D12GraphicsCommandList2> commandList)
+void InstancedSimpleCube::SetRootParams(ComPtr<ID3D12GraphicsCommandList2> commandList)
 {
 	Primitive::SetRootParams(commandList);
 
+}
+
+void InstancedSimpleCube::Draw(ComPtr<ID3D12GraphicsCommandList2> commandList)
+{
 	commandList->SetGraphicsRoot32BitConstants(0, sizeof(XMMATRIX) / 4, &mvp_matrix, 0);
 	commandList->SetDescriptorHeaps(1, srv_desc_heap_.GetAddressOf());
 	commandList->SetGraphicsRootDescriptorTable(1, srv_desc_heap_->GetGPUDescriptorHandleForHeapStart());
-}
-
-void SimpleCube::Draw(ComPtr<ID3D12GraphicsCommandList2> commandList)
-{
-	SetRootParams(commandList);
-	commandList->DrawIndexedInstanced(GetIndexCount(), 1, 0, 0, 0);
+	for(int i = 0; i < _countof(instance_pos_); ++i)
+	{
+		commandList->SetGraphicsRoot32BitConstants(2, sizeof(XMMATRIX) / 4, &instance_pos_[i], 0);
+		commandList->DrawIndexedInstanced(GetIndexCount(), 1, 0, 0, 0);
+	}
 }

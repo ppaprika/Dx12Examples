@@ -16,7 +16,7 @@
 #include "DirectCommandList.h"
 #include "Window.h"
 #include "Game.h"
-#include "RenderCube.h"
+#include "DragAndCheck.h"
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
@@ -56,7 +56,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	Params.numOfBackBuffers = 3;
 
 	std::shared_ptr<Application> App = Application::GetApplication();
-	std::shared_ptr<RenderCube> PureGame = std::make_shared<RenderCube>();
+	std::shared_ptr<DragAndCheck> PureGame = std::make_shared<DragAndCheck>();
 	int value = App->Run(PureGame, &Params);
 
 	PureGame = nullptr;
