@@ -9,7 +9,7 @@
 
 using namespace DirectX;
 
-#define MODELCLASS InstancedSimpleCube
+#define MODELCLASS SimpleCube
 
 class DragAndCheck : public Game
 {
@@ -36,7 +36,7 @@ protected:
 	XMMATRIX g_view_matrix_ = {};
 	XMMATRIX g_projection_matrix_ = {};
 
-	std::shared_ptr<MODELCLASS> cube_;
+	std::shared_ptr<MODELCLASS> model_;
 
 	bool init_ = false;
 };

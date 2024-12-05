@@ -17,7 +17,7 @@ void DragAndCheck::Init()
 
 	ComPtr<ID3D12Device> device = app_.lock()->GetDevice();
 
-	cube_ = std::make_shared<MODELCLASS>(upload_buffer_, direct_command_list_);
+	model_ = std::make_shared<MODELCLASS>(upload_buffer_, direct_command_list_);
 	init_ = true;
 }
 
@@ -47,10 +47,10 @@ void DragAndCheck::Render()
 
 	XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
 	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
-	cube_->mvp_matrix = mvpMatrix;
+	model_->mvp_matrix = mvpMatrix;
 
 	direct_command_list_->Reset();
-	direct_command_list_->Draw(cube_.get());
+	direct_command_list_->Draw(model_.get());
 	direct_command_list_->Present();
 }
 
