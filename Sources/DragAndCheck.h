@@ -9,7 +9,7 @@
 
 using namespace DirectX;
 
-#define MODELCLASS SimpleCube
+#define MODELCLASS InstancedSimpleCube
 
 class DragAndCheck : public Game
 {

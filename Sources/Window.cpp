@@ -18,6 +18,7 @@ Window::Window(const CreateWindowParams& Params)
 		ExitProcess(1);
 	}
 
+	owner_ = Params.command_list;
 	width_ = Params.nWidth;
 	height_ = Params.nHeight;
 	num_of_back_buffers = Params.numOfBackBuffers;
@@ -35,13 +36,10 @@ Window::Window(const CreateWindowParams& Params)
 
 	ShowWindow(window_, Params.nCmdShow);
 
-	CreateSwapChain(window_, Params.command_list->_commandQueue, Params.numOfBackBuffers).As(&swap_chain);
-	rtv_heap = CreateDescriptorHeap(Application::GetDevice(), Params.numOfBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	UpdateRenderTarget(Application::GetDevice(), swap_chain, back_buffers, Params.numOfBackBuffers, rtv_heap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	owner_ = Params.command_list;
-
-	InitViewportAndRect();
-	InitDepth();
+	CreateSwapChain();
+	CreateRtvHeap();
+	CreateDsvHeap();
+	ResizeWindow(width_, height_);
 }
 
 Window::~Window()
@@ -51,10 +49,10 @@ Window::~Window()
 void Window::InitViewportAndRect()
 {
 	viewport = CD3DX12_VIEWPORT(0., 0., width_, height_, D3D12_MIN_DEPTH, D3D12_MAX_DEPTH);
-	d3d12_rect = CD3DX12_RECT(0, 0, width_, height_);
+	d3d12_rect = CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX);
 }
 
-void Window::InitDepth()
+void Window::CreateDsvHeap()
 {
 	// create dsv heap
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
@@ -62,8 +60,6 @@ void Window::InitDepth()
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	heapDesc.NumDescriptors = 1;
 	ThrowIfFailed(Application::GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&dsv_heap)));
-
-	ResizeDepthBuffer();
 }
 
 void Window::ResizeDepthBuffer()
@@ -95,7 +91,7 @@ void Window::ResizeDepthBuffer()
 	device->CreateDepthStencilView(depth_buffer.Get(), &desc, dsv);
 }
 
-void Window::UpdateSize(int width, int height)
+void Window::ResizeWindow(int width, int height)
 {
 	width_ = width;
 	height_ = height;
@@ -108,12 +104,16 @@ void Window::UpdateSize(int width, int height)
 	{
 		return;
 	}
+
 	InitViewportAndRect();
 	ResizeDepthBuffer();
 
 	for(UINT i = 0; i < num_of_back_buffers; ++i)
 	{
-		back_buffers[i].Reset();
+		if(back_buffers.size() > i)
+		{
+			back_buffers[i].Reset();
+		}
 	}
 	swap_chain->ResizeBuffers(num_of_back_buffers, width_, height_, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING);
 	UpdateRenderTarget(Application::GetDevice(), swap_chain, back_buffers, num_of_back_buffers, rtv_heap, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -137,15 +137,15 @@ D3D12_CPU_DESCRIPTOR_HANDLE Window::GetRTVHandle()
 	return rtvHandle;
 }
 
-ComPtr<IDXGISwapChain> Window::CreateSwapChain(HWND window, ComPtr<ID3D12CommandQueue> queue, int numOfBackBuffers)
+void Window::CreateSwapChain()
 {
 	DXGI_MODE_DESC modeDesc = {};
 	modeDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 	DXGI_SWAP_CHAIN_DESC swapChaindesc = {};
 	swapChaindesc.BufferDesc = modeDesc;
-	swapChaindesc.BufferCount = numOfBackBuffers;
-	swapChaindesc.OutputWindow = window;
+	swapChaindesc.BufferCount = num_of_back_buffers;
+	swapChaindesc.OutputWindow = window_;
 	swapChaindesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	swapChaindesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChaindesc.SampleDesc = { 1, 0 };
@@ -155,9 +155,9 @@ ComPtr<IDXGISwapChain> Window::CreateSwapChain(HWND window, ComPtr<ID3D12Command
 	ComPtr<IDXGIFactory2> factory;
 	ComPtr<IDXGISwapChain> value;
 	ThrowIfFailed(CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&factory)));
-	ThrowIfFailed(factory->CreateSwapChain(queue.Get(), &swapChaindesc, &value));
+	ThrowIfFailed(factory->CreateSwapChain(owner_.lock()->_commandQueue.Get(), &swapChaindesc, &value));
 
-	return value;
+	value.As(&swap_chain);
 }
 
 bool Window::UpdateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain> swapChain,
@@ -192,16 +192,15 @@ bool Window::UpdateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapCha
 	return true;
 }
 
-ComPtr<ID3D12DescriptorHeap> Window::CreateDescriptorHeap(ComPtr<ID3D12Device> device, UINT num,
-	D3D12_DESCRIPTOR_HEAP_TYPE type)
+void Window::CreateRtvHeap()
 {
 	ComPtr<ID3D12DescriptorHeap> value;
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = num;
-	heapDesc.Type = type;
+	heapDesc.NumDescriptors = num_of_back_buffers;
+	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 
-	ThrowIfFailed(device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&value)));
+	ThrowIfFailed(Application::GetDevice()->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&value)));
 
-	return value;
+	rtv_heap = value;
 }
 

@@ -43,7 +43,7 @@ public:
 	int GetHeight() { return height_; }
 
 
-	void UpdateSize(int width, int height);
+	void ResizeWindow(int width, int height);
 
 	ComPtr<ID3D12Resource> GetCurrentBackBuffer();
 
@@ -72,10 +72,10 @@ private:
 	std::weak_ptr<DirectCommandList> owner_;
 
 	void InitViewportAndRect();
-	void InitDepth();
+	void CreateDsvHeap();
 	void ResizeDepthBuffer();
 
-	static ComPtr<IDXGISwapChain> CreateSwapChain(HWND window, ComPtr<ID3D12CommandQueue> queue, int numOfBackBuffers);
+	void CreateSwapChain();
 	static bool UpdateRenderTarget(ComPtr<ID3D12Device> device, ComPtr<IDXGISwapChain> swapChain, std::vector<ComPtr<ID3D12Resource>>& resource, UINT bufferNum, ComPtr<ID3D12DescriptorHeap> heap, D3D12_DESCRIPTOR_HEAP_TYPE type);
-	static ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device> device, UINT num, D3D12_DESCRIPTOR_HEAP_TYPE type);
+	void CreateRtvHeap();
 };

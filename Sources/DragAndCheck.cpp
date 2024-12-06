@@ -135,7 +135,7 @@ LRESULT DragAndCheck::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPAR
 			//char buffer[500];
 			//sprintf_s(buffer, "width: %d, height: %d \n", width, height);
 			//OutputDebugStringA(buffer);
-			direct_command_list_->GetTargetWindow()->UpdateSize(width, height);
+			direct_command_list_->GetTargetWindow()->ResizeWindow(width, height);
 		}
 		break;
 	}
