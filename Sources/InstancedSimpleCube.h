@@ -15,8 +15,10 @@ public:
 
 	void Draw(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
 
-	XMMATRIX mvp_matrix;
+	void UpdateMVPMatrix(const XMMATRIX& Matrix) { mvp_matrix = Matrix; };
 private:
+	XMMATRIX mvp_matrix;
+
 	struct InstanceData
 	{
 		XMFLOAT4X4 world;

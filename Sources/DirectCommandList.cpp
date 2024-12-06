@@ -178,10 +178,14 @@ void DirectCommandList::Present()
 }
 
 int DirectCommandList::GetTargetWindowWidth() const
-{ return window->GetWidth(); }
+{
+	return window->GetWidth();
+}
 
 int DirectCommandList::GetTargetWindowHeight() const
-{ return window->GetHeight(); }
+{
+	return window->GetHeight();
+}
 
 void DirectCommandList::InitCommandQueue()
 {

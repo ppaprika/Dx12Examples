@@ -3,23 +3,24 @@
 #include <DirectXMath.h>
 
 #include "Game.h"
-#include "InstancedSimpleCube.h"
-#include "SimpleCube.h"
 #include "TextureLoader.h"
 
 using namespace DirectX;
+
+class InstancedSimpleCube;
+class SimpleCube;
 
 #define MODELCLASS InstancedSimpleCube
 
 class DragAndCheck : public Game
 {
 public:
+
 	virtual void Init() override;
 	virtual void Update() override;
 	virtual void Render() override;
 	virtual void Release() override;
 	virtual LRESULT WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam) override;
-
 protected:
 	struct MouseTracker
 	{

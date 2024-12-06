@@ -17,6 +17,7 @@
 #include "Window.h"
 #include "Game.h"
 #include "DragAndCheck.h"
+#include "FPCamera.h"
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
@@ -56,7 +57,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 	Params.numOfBackBuffers = 3;
 
 	std::shared_ptr<Application> App = Application::GetApplication();
-	std::shared_ptr<DragAndCheck> PureGame = std::make_shared<DragAndCheck>();
+	auto PureGame = std::make_shared<FPCamera>();
 	int value = App->Run(PureGame, &Params);
 
 	PureGame = nullptr;

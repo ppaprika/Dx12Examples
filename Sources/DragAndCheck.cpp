@@ -11,6 +11,8 @@
 #include "Helpers.h"
 #include "UploadBuffer.h"
 
+#include "IncludePrimitives.h"
+
 void DragAndCheck::Init()
 {
 	Game::Init();
@@ -33,7 +35,7 @@ void DragAndCheck::Update()
 
 
 	XMVECTOR eyePosition = XMVectorSet(0, 0, -10, 0);
-	XMVECTOR focusPoint = XMVectorSet(0, 0, 0, 1);
+	XMVECTOR focusPoint = XMVectorSet(0, 0, 1, 0);
 	XMVECTOR upDirection = XMVectorSet(0, 1, 0, 0);
 	g_view_matrix_ = XMMatrixLookAtLH(eyePosition, focusPoint, upDirection);
 
@@ -47,7 +49,8 @@ void DragAndCheck::Render()
 
 	XMMATRIX mvpMatrix = XMMatrixMultiply(g_model_matrix_, g_view_matrix_);
 	mvpMatrix = XMMatrixMultiply(mvpMatrix, g_projection_matrix_);
-	model_->mvp_matrix = mvpMatrix;
+
+	model_->UpdateMVPMatrix(mvpMatrix);
 
 	direct_command_list_->Reset();
 	direct_command_list_->Draw(model_.get());

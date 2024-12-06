@@ -4,13 +4,10 @@
 #include <vector>
 #include <D3DX12/d3d12.h>
 #include <D3DX12/d3dx12_core.h>
-
-
 #include "Game.h"
 
 class DirectCommandList;
 using Microsoft::WRL::ComPtr;
-
 
 // todo: change name to RunGameParams
 struct CreateWindowParams
@@ -36,11 +33,11 @@ public:
 	Window(const CreateWindowParams& Params);
 	virtual ~Window();
 
-	HWND GetWindow() { return window_; }
+	HWND GetWindow() const { return window_; }
 
-	int GetWidth() { return width_; }
+	int GetWidth() const { return width_; }
 
-	int GetHeight() { return height_; }
+	int GetHeight() const { return height_; }
 
 
 	void ResizeWindow(int width, int height);

@@ -136,6 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Application.cpp" />
+    <ClCompile Include="Sources\Camera.cpp" />
     <ClCompile Include="Sources\DirectCommandList.cpp" />
     <ClCompile Include="Sources\FPCamera.cpp" />
     <ClCompile Include="Sources\Game.cpp" />
@@ -171,11 +172,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Application.h" />
+    <ClInclude Include="Sources\Camera.h" />
     <ClInclude Include="Sources\DirectCommandList.h" />
     <ClInclude Include="Sources\Defines.h" />
     <ClInclude Include="Sources\FPCamera.h" />
     <ClInclude Include="Sources\Game.h" />
     <ClInclude Include="Sources\Helpers.h" />
+    <ClInclude Include="Sources\IncludePrimitives.h" />
     <ClInclude Include="Sources\IndexBufferView.h" />
     <ClInclude Include="Sources\InstancedSimpleCube.h" />
     <ClInclude Include="Sources\Primitive.h" />
