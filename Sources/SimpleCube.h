@@ -16,8 +16,9 @@ public:
 
 	void Draw(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
 
-	XMMATRIX mvp_matrix;
+	void UpdateMVPMatrix(XMMATRIX matrix) { mvp_matrix = matrix; }
 private:
+	XMMATRIX mvp_matrix;
 
 	struct VertexPosColor
 	{

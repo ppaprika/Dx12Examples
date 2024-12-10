@@ -20,26 +20,36 @@ void FPCamera::Update()
 {
 	Game::Update();
 
-	float cameraRotX = static_cast<float>(mouse_tracker_.delta_pos.x) / 5;
-	float cameraRotY = static_cast<float>(mouse_tracker_.delta_pos.y) / 5;
+	// update camera
 
-	XMMATRIX cameraRotMatrix = XMMatrixRotationAxis({ -1, 0, 0, 0 }, XMConvertToRadians(cameraRotY));
-	cameraRotMatrix = XMMatrixRotationAxis({ 0, -1, 0, 0 }, XMConvertToRadians(cameraRotX)) * cameraRotMatrix;
-	camera_forward_ = XMVector4Transform(camera_forward_, cameraRotMatrix);
-	camera_forward_ = XMVector4Normalize(camera_forward_);
 
-	view_matrix_ = XMMatrixLookAtLH(camera_pos_, camera_forward_ + camera_pos_, camera_up_vec_);
+	//float cameraRotX = static_cast<float>(mouse_tracker_.delta_pos.x) / 5;
+	//float cameraRotY = static_cast<float>(mouse_tracker_.delta_pos.y) / 5;
 
-	float aspectRatio = direct_command_list_->GetTargetWindowWidth() / static_cast<float>(direct_command_list_->GetTargetWindowHeight());
-	projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspectRatio, 0.1f, 100.0f);
+	//camera_right_ = XMVector3Cross(camera_forward_, camera_up_);
+	//XMMATRIX cameraRotMatrix = XMMatrixRotationAxis(camera_right_, XMConvertToRadians(cameraRotY));
+	//cameraRotMatrix = XMMatrixRotationAxis(camera_up_, XMConvertToRadians(cameraRotX)) * cameraRotMatrix;
+	//camera_forward_ = XMVector4Transform(camera_forward_, cameraRotMatrix);
+	//camera_forward_ = XMVector4Normalize(camera_forward_);
 
-	XMMATRIX mvpMatrix = XMMatrixMultiply(model_matrix_, view_matrix_);
-	mvpMatrix = XMMatrixMultiply(mvpMatrix, projection_matrix_);
+	//view_matrix_ = XMMatrixLookAtLH(camera_pos_, camera_forward_ + camera_pos_, camera_up_);
+
+	//float aspectRatio = direct_command_list_->GetTargetWindowWidth() / static_cast<float>(direct_command_list_->GetTargetWindowHeight());
+	//projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspectRatio, 0.1f, 100.0f);
+
+	//XMMATRIX view_matrix_ = camera_.GetViewMatrix();
+	//XMMATRIX projection_matrix_ = camera_.GetProjectionMatrix();
+
+	//XMMATRIX mvpMatrix = XMMatrixMultiply(model_matrix_, view_matrix_);
+	//mvpMatrix = XMMatrixMultiply(mvpMatrix, projection_matrix_);
 }
 
 void FPCamera::Render()
 {
 	Game::Render();
+
+	XMMATRIX view_matrix_ = camera_.GetViewMatrix();
+	XMMATRIX projection_matrix_ = camera_.GetProjectionMatrix();
 
 	XMMATRIX mvpMatrix = XMMatrixMultiply(model_matrix_, view_matrix_);
 	mvpMatrix = XMMatrixMultiply(mvpMatrix, projection_matrix_);
@@ -59,12 +69,11 @@ LRESULT FPCamera::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM I
 	}
 	HWND hWnd = direct_command_list_->GetTargetWindow()->GetWindow();
 
+	Update();
+	Render();
+
 	switch (InMessage)
 	{
-	case WM_PAINT:
-		Update();
-		Render();
-		return 0;
 	case WM_LBUTTONDOWN:
 		{
 			SetCapture(hWnd);
@@ -110,10 +119,16 @@ LRESULT FPCamera::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM I
 			switch(vkCode)
 			{
 			case 'W':
-				camera_pos_ += camera_forward_ * camera_speed_;
+				//camera_pos_ += camera_forward_ * camera_speed_;
 				break;
-			case 's':
-				camera_pos_ -= camera_forward_ * camera_speed_;
+			case 'S':
+				//camera_pos_ -= camera_forward_ * camera_speed_;
+				break;
+			case 'A':
+				//camera_pos_ -= camera_right_ * camera_speed_;
+				break;
+			case 'D':
+				//camera_pos_ += camera_right_ * camera_speed_;
 				break;
 			}
 			break;
@@ -133,6 +148,8 @@ LRESULT FPCamera::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM I
 		PostQuitMessage(WM_QUIT);
 		break;
 	default:
+		mouse_tracker_.delta_pos.x = 0;
+		mouse_tracker_.delta_pos.y = 0;
 		return DefWindowProc(hWnd, InMessage, InWParam, InLParam);
 	}
 

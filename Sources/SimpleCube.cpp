@@ -110,7 +110,7 @@ SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<Dir
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	ThrowIfFailed(Application::GetDevice()->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv_desc_heap_)));
 	D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = srv_desc_heap_->GetCPUDescriptorHandleForHeapStart();
-	TextureLoader::LoadTextureFromFile(Application::GetDevice(), commandList->GetCommandList(), L"../../resources/Texture.jpg", texture_, srvHandle);
+	TextureLoader::LoadTextureFromFile(Application::GetDevice(), commandList->GetCommandList(), L"../../resources/Texture.png", texture_, srvHandle);
 	commandList->SingleAndWait();
 
 	// init mvp matrix
