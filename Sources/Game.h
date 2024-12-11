@@ -56,10 +56,13 @@ public:
 		D3D12_RESOURCE_FLAGS flags, ComPtr<ID3D12Device> device);
 
 	// todo make it private
+
+	float GetDeltaTimeInSec() const { return delta_time.count() / 1000.f; }
 protected:
 	std::weak_ptr<Application> app_;
 	bool show_fps_ = true;
 	std::chrono::time_point<std::chrono::steady_clock> last_tick_;
+	std::chrono::duration<double, std::milli> delta_time;
 	std::shared_ptr<UploadBuffer> upload_buffer_;
 
 	// command lists

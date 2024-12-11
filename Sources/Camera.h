@@ -9,11 +9,13 @@ using namespace DirectX;
 class Camera
 {
 public:
-	XMMATRIX GetViewMatrix();
-	XMMATRIX GetProjectionMatrix();
+	XMMATRIX GetViewMatrix() const;
+	XMMATRIX GetProjectionMatrix() const;
 
     void OnKeyDown(WPARAM key);
     void OnKeyUp(WPARAM key);
+
+    void Update(float delta, float aspectRatio);
 
 private:
     void Reset();
@@ -31,9 +33,16 @@ private:
         bool down;
     };
 
-	XMFLOAT3 camera_position_ = {0, 0, -10};
-	XMFLOAT3 camera_up_vector_ = {0, 1, 0};
-	XMFLOAT3 camera_forward_vector_ = {0, 0, 1};
+	XMVECTOR camera_position_ = {0, 0, -10};
+    XMVECTOR camera_up_vector_ = {0, 1, 0};
+    XMVECTOR camera_init_forward_vector = { 0, 0, 1 };
+    XMVECTOR camera_forward_vector_ = {0, 0, 1};
+
+    float camera_pitch_ = 0;
+    float camera_yaw_ = 0;
+
+    float fov_ = 60;
+    float aspect_ratio_ = 0;
 
     // speed per sec
 	float camera_move_speed_ = 5;

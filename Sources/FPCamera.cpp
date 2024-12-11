@@ -21,27 +21,7 @@ void FPCamera::Update()
 	Game::Update();
 
 	// update camera
-
-
-	//float cameraRotX = static_cast<float>(mouse_tracker_.delta_pos.x) / 5;
-	//float cameraRotY = static_cast<float>(mouse_tracker_.delta_pos.y) / 5;
-
-	//camera_right_ = XMVector3Cross(camera_forward_, camera_up_);
-	//XMMATRIX cameraRotMatrix = XMMatrixRotationAxis(camera_right_, XMConvertToRadians(cameraRotY));
-	//cameraRotMatrix = XMMatrixRotationAxis(camera_up_, XMConvertToRadians(cameraRotX)) * cameraRotMatrix;
-	//camera_forward_ = XMVector4Transform(camera_forward_, cameraRotMatrix);
-	//camera_forward_ = XMVector4Normalize(camera_forward_);
-
-	//view_matrix_ = XMMatrixLookAtLH(camera_pos_, camera_forward_ + camera_pos_, camera_up_);
-
-	//float aspectRatio = direct_command_list_->GetTargetWindowWidth() / static_cast<float>(direct_command_list_->GetTargetWindowHeight());
-	//projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspectRatio, 0.1f, 100.0f);
-
-	//XMMATRIX view_matrix_ = camera_.GetViewMatrix();
-	//XMMATRIX projection_matrix_ = camera_.GetProjectionMatrix();
-
-	//XMMATRIX mvpMatrix = XMMatrixMultiply(model_matrix_, view_matrix_);
-	//mvpMatrix = XMMatrixMultiply(mvpMatrix, projection_matrix_);
+	camera_.Update(GetDeltaTimeInSec(), direct_command_list_->GetTargetWindowWidth() / static_cast<float>(direct_command_list_->GetTargetWindowHeight()));
 }
 
 void FPCamera::Render()
@@ -69,69 +49,22 @@ LRESULT FPCamera::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM I
 	}
 	HWND hWnd = direct_command_list_->GetTargetWindow()->GetWindow();
 
-	Update();
-	Render();
 
 	switch (InMessage)
 	{
-	case WM_LBUTTONDOWN:
-		{
-			SetCapture(hWnd);
-			mouse_tracker_.mouse_left_button_down = true;
-			mouse_tracker_.last_pos.x = GET_X_LPARAM(InLParam);
-			mouse_tracker_.last_pos.y = GET_Y_LPARAM(InLParam);
-			break;
-		}
-	case WM_MOUSEMOVE:
-		{
-			if (mouse_tracker_.mouse_left_button_down)
-			{
-				mouse_tracker_.delta_pos.x = GET_X_LPARAM(InLParam) - mouse_tracker_.last_pos.x;
-				mouse_tracker_.delta_pos.y = GET_Y_LPARAM(InLParam) - mouse_tracker_.last_pos.y;
-
-				mouse_tracker_.last_pos.x = GET_X_LPARAM(InLParam);
-				mouse_tracker_.last_pos.y = GET_Y_LPARAM(InLParam);
-			}
-			break;
-		}
-	case WM_LBUTTONUP:
-		{
-			if (GetCapture() == hWnd)
-			{
-				ReleaseCapture();
-			}
-			mouse_tracker_.mouse_left_button_down = false;
-			mouse_tracker_.delta_pos = { 0, 0 };
-
-			break;
-		}
-	case WM_MOUSEWHEEL:
-		{
-			float zDelta = ((int)(short)HIWORD(InWParam)) / (float)WHEEL_DELTA;
-			fov_ -= zDelta;
-			fov_ = clamp(fov_, 12.0f, 90.0f);
-			break;
-		}
+	case WM_PAINT:
+		Update();
+		Render();
+		return 0;
 	case WM_KEYDOWN:
 		{
-			WORD vkCode = LOWORD(InWParam);
-
-			switch(vkCode)
-			{
-			case 'W':
-				//camera_pos_ += camera_forward_ * camera_speed_;
-				break;
-			case 'S':
-				//camera_pos_ -= camera_forward_ * camera_speed_;
-				break;
-			case 'A':
-				//camera_pos_ -= camera_right_ * camera_speed_;
-				break;
-			case 'D':
-				//camera_pos_ += camera_right_ * camera_speed_;
-				break;
-			}
-			break;
+			camera_.OnKeyDown(InWParam);
+			return 0;
+		}
+	case WM_KEYUP:
+		{
+			camera_.OnKeyUp(InWParam);
+			return 0;
 		}
 	case WM_SIZE:
 		{
@@ -142,17 +75,13 @@ LRESULT FPCamera::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM I
 
 				direct_command_list_->GetTargetWindow()->ResizeWindow(width, height);
 			}
-			break;
+			return 0;
 		}
 	case WM_DESTROY:
 		PostQuitMessage(WM_QUIT);
-		break;
-	default:
-		mouse_tracker_.delta_pos.x = 0;
-		mouse_tracker_.delta_pos.y = 0;
-		return DefWindowProc(hWnd, InMessage, InWParam, InLParam);
+		return 0;
 	}
 
 
-	return Game::WinProc(InHwnd, InMessage, InWParam, InLParam);
+	return DefWindowProc(hWnd, InMessage, InWParam, InLParam);
 }

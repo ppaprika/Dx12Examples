@@ -26,9 +26,9 @@ void Game::Update()
 	if(show_fps_)
 	{
 		auto now = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double, std::milli> elapsed = now - last_tick_;
+		delta_time = now - last_tick_;
 		last_tick_ = now;
-		double fps = 1000 / elapsed.count();
+		double fps = 1000 / delta_time.count();
 		char buffer[500];
 		sprintf_s(buffer, 500, "FPS: %f\n", fps);
 		OutputDebugStringA(buffer);
@@ -50,10 +50,14 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 	Init();
 
 	MSG msg = {};
-	while (GetMessage(&msg, nullptr, 0, 0))
+	while (msg.message != WM_QUIT)
 	{
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
+		// Process any messages in the queue.
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
 	}
 	Release();
 	return 0;
