@@ -29,6 +29,8 @@ protected:
 	IndexBufferView index_buffer_view_;
 
 	TextureLoader::TextureResource texture_ = {};
+	std::vector<TextureLoader::TextureResource> textures_;
+
 	ComPtr<ID3D12DescriptorHeap> srv_desc_heap_;
 
 	ComPtr<ID3D12RootSignature> root_signature_;

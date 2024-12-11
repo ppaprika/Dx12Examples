@@ -8,7 +8,7 @@
 #include "Helpers.h"
 #include "DirectCommandList.h"
 #include "DragAndCheck.h"
-
+#include "TextureLoader.h"
 
 
 SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<DirectCommandList> commandList): Primitive()
@@ -35,7 +35,7 @@ SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<Dir
 
 	// create root signature
 	CD3DX12_DESCRIPTOR_RANGE1 descriptorRange[1] = {};
-	descriptorRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
+	descriptorRange[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE);
 
 	CD3DX12_ROOT_PARAMETER1 rootParameter[2] = {};
 	rootParameter[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
@@ -105,12 +105,19 @@ SimpleCube::SimpleCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<Dir
 
 	// load texture to srv
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 1;
+	srvHeapDesc.NumDescriptors = 2;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	ThrowIfFailed(Application::GetDevice()->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srv_desc_heap_)));
+	// first texture
 	D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = srv_desc_heap_->GetCPUDescriptorHandleForHeapStart();
-	TextureLoader::LoadTextureFromFile(Application::GetDevice(), commandList->GetCommandList(), L"../../resources/Texture.png", texture_, srvHandle);
+	textures_.push_back(TextureLoader::TextureResource());
+	TextureLoader::LoadTextureFromFile(Application::GetDevice(), commandList->GetCommandList(), L"../../resources/Texture.png", textures_[0], srvHandle);
+	// second texture
+	textures_.push_back(TextureLoader::TextureResource());
+	srvHandle.ptr += Application::GetDescriptorSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	TextureLoader::LoadTextureFromFile(Application::GetDevice(), commandList->GetCommandList(), L"../../resources/CrossLine.png", textures_[1], srvHandle);
+
 	commandList->SingleAndWait();
 
 	// init mvp matrix
