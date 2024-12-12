@@ -136,6 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Sources\Application.cpp" />
+    <ClCompile Include="Sources\BlendCube.cpp" />
     <ClCompile Include="Sources\Camera.cpp" />
     <ClCompile Include="Sources\DirectCommandList.cpp" />
     <ClCompile Include="Sources\FPCamera.cpp" />
@@ -161,6 +162,10 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
     </FxCompile>
+    <FxCompile Include="Shaders\PixelBlendShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="shaders\PixelShader.hlsl">
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
@@ -172,6 +177,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Sources\Application.h" />
+    <ClInclude Include="Sources\BlendCube.h" />
     <ClInclude Include="Sources\Camera.h" />
     <ClInclude Include="Sources\DirectCommandList.h" />
     <ClInclude Include="Sources\Defines.h" />

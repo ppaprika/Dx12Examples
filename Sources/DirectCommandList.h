@@ -55,5 +55,4 @@ public:
 
 	// from outside
 	ComPtr<ID3D12Device> _device;
-	std::shared_ptr<Window> current_window;
 };

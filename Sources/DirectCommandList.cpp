@@ -121,8 +121,6 @@ void DirectCommandList::DrawSinglePrimitive(Primitive* primitive)
 
 void DirectCommandList::Reset()
 {
-	current_window = window;
-
 	auto dsv = window->GetDSVHandle();
 	ComPtr<ID3D12Resource> backBuffer = window->GetCurrentBackBuffer();
 	auto rtv = window->GetRTVHandle();
