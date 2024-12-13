@@ -13,9 +13,9 @@ public:
 
 	size_t GetIndexCount() const override { return _countof(indexes_); }
 
-	void SetRootParams(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
+	//void SetRootParams(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
 
-	void Draw(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
+	//void Draw(ComPtr<ID3D12GraphicsCommandList2> commandList) override;
 
 	void UpdateMVPMatrix(XMMATRIX matrix) { mvp_matrix = matrix; }
 

@@ -43,7 +43,6 @@ public:
 	virtual LRESULT WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam);
 
 	void SetShowFps(bool NewShowFps) { show_fps_ = NewShowFps; }
-	ComPtr<ID3D12Device> GetDevice();
 
 	void Flush();
 
@@ -59,12 +58,15 @@ public:
 
 	float GetDeltaTimeInSec() const { return delta_time.count() / 1000.f; }
 protected:
-	std::weak_ptr<Application> app_;
 	bool show_fps_ = true;
 	std::chrono::time_point<std::chrono::steady_clock> last_tick_;
 	std::chrono::duration<double, std::milli> delta_time;
+
+
 	std::shared_ptr<UploadBuffer> upload_buffer_;
 
 	// command lists
 	std::shared_ptr<DirectCommandList> direct_command_list_;
+
+	std::vector<std::shared_ptr<DirectCommandList>> direct_command_lists_;
 };

@@ -39,13 +39,14 @@ int Game::Run(std::shared_ptr<Application> App, CreateWindowParams* Params)
 {
 	GlobalGame = shared_from_this();
 
-	app_ = App;
 	upload_buffer_ = std::make_shared<UploadBuffer>(App->GetDevice());
 
-	direct_command_list_ = std::make_shared<DirectCommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params->numOfBackBuffers);
-	Params->command_list = direct_command_list_;
-	Params->winProc = Game::StaticWinProc;
-	direct_command_list_->CreateTargetWindow(Params);
+	{
+		direct_command_list_ = std::make_shared<DirectCommandList>(Application::GetDevice(), D3D12_COMMAND_LIST_TYPE_DIRECT, Params->numOfBackBuffers);
+		Params->command_list = direct_command_list_;
+		Params->winProc = Game::StaticWinProc;
+		direct_command_list_->CreateTargetWindow(Params);	
+	}
 
 	Init();
 
@@ -76,15 +77,6 @@ LRESULT Game::StaticWinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM
 LRESULT Game::WinProc(HWND InHwnd, UINT InMessage, WPARAM InWParam, LPARAM InLParam)
 {
 	return DefWindowProc(InHwnd, InMessage, InWParam, InLParam);
-}
-
-ComPtr<ID3D12Device> Game::GetDevice()
-{
-	if(!app_.expired())
-	{
-		return app_.lock()->GetDevice();
-	}
-	return nullptr;
 }
 
 void Game::Flush()

@@ -17,8 +17,6 @@ void DragAndCheck::Init()
 {
 	Game::Init();
 
-	ComPtr<ID3D12Device> device = app_.lock()->GetDevice();
-
 	model_ = std::make_shared<MODELCLASS>(upload_buffer_, direct_command_list_);
 	init_ = true;
 }
