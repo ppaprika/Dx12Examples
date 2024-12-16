@@ -1,5 +1,6 @@
 #define WIN32_LEAN_AND_MEAN
 
+#include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <dxgi1_3.h>
 #include <dxgi1_4.h>
@@ -9,6 +10,8 @@
 #include <dxgidebug.h>
 #include <float.h>
 #include <Shlwapi.h>
+#include <D3DX12/d3dx12_core.h>
+#include <D3DX12/d3dx12_root_signature.h>
 
 #include "Camera.h"
 #include "IndexBufferView.h"
@@ -16,6 +19,9 @@
 #include "VertexBufferView.h"
 
 using namespace DirectX;
+
+constexpr UINT window_width = 600;
+constexpr UINT window_height = 600;
 
 
 XMMATRIX mvp_matrix;
@@ -95,7 +101,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         CLASS_NAME,
         L"Window_1",
         WS_OVERLAPPEDWINDOW,
-        600, 600, 600, 600,
+        600, 600, window_width, window_height,
         nullptr,
         nullptr,
         hInstance,
@@ -195,6 +201,181 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         temp_chain.As(&swap_chain);
     }
 
+    // we use two-pass rendering, so, we have:
+    // 3 final rtv
+    // 1 intermediate rtv and 1 srv created on same resource
+    // 1 dsv
+
+    // create final render target view descriptor heap
+    ComPtr<ID3D12DescriptorHeap> final_rtv_desc_heap;
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = {};
+        rtv_heap_desc.NumDescriptors = back_buffer_num;
+        rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&final_rtv_desc_heap));
+    }
+
+    // final render target view
+    ComPtr<ID3D12Resource> final_rt_resources[back_buffer_num];
+    {
+        auto handle = final_rtv_desc_heap->GetCPUDescriptorHandleForHeapStart();
+        size_t descriptor_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+        for (size_t i = 0; i < back_buffer_num; ++i)
+        {
+            ComPtr<ID3D12Resource> resource;
+            swap_chain->GetBuffer(i, IID_PPV_ARGS(&resource));
+            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+            rtv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+            device->CreateRenderTargetView(resource.Get(), &rtv_desc, handle);
+            handle.ptr += descriptor_size;
+            final_rt_resources[i] = resource;
+        }
+    }
+
+    // intermediate resource
+    ComPtr<ID3D12Resource> intermediate_resource;
+    {
+        CD3DX12_HEAP_PROPERTIES heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+        CD3DX12_RESOURCE_DESC resource_desc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, window_width, window_height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET);
+
+        device->CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &resource_desc, D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&intermediate_resource));
+    }
+
+    
+    ComPtr<ID3D12DescriptorHeap> intermediate_rtv_desc_heap;
+    ComPtr<ID3D12DescriptorHeap> intermediate_srv_desc_heap;
+    {
+        // intermediate rtv
+        D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc = {};
+        rtv_heap_desc.NumDescriptors = 1;
+        rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+        rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&intermediate_rtv_desc_heap));
+
+        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+        rtv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+        device->CreateRenderTargetView(intermediate_resource.Get(), &rtv_desc, intermediate_rtv_desc_heap->GetCPUDescriptorHandleForHeapStart());
+
+        // intermediate srv
+        D3D12_DESCRIPTOR_HEAP_DESC srv_heap_desc = {};
+        srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        srv_heap_desc.NumDescriptors = 1;
+        srv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        device->CreateDescriptorHeap(&srv_heap_desc, IID_PPV_ARGS(&intermediate_srv_desc_heap));
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+        srv_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv_desc.Texture2D = { 0, 1 };
+        device->CreateShaderResourceView(intermediate_resource.Get(), &srv_desc, intermediate_srv_desc_heap->GetCPUDescriptorHandleForHeapStart());
+    }
+
+    // dsv resource
+    ComPtr<ID3D12Resource> dsv_resource;
+    {
+        CD3DX12_HEAP_PROPERTIES heap_props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+        CD3DX12_RESOURCE_DESC res_desc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, window_width, window_height, 1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+        D3D12_CLEAR_VALUE clear_value = {};
+        clear_value.Format = DXGI_FORMAT_D32_FLOAT;
+        clear_value.DepthStencil = { 1, 0 };
+        device->CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &res_desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear_value, IID_PPV_ARGS(&dsv_resource));
+    }
+
+    // dsv
+    ComPtr<ID3D12DescriptorHeap> dsv_desc_heap;
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
+        heap_desc.NumDescriptors = 1;
+        heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        device->CreateDescriptorHeap(&heap_desc, IID_PPV_ARGS(&dsv_desc_heap));
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc;
+        dsv_desc.Format = DXGI_FORMAT_D32_FLOAT;
+        dsv_desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+        dsv_desc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+        dsv_desc.Texture2D.MipSlice = 0;
+        device->CreateDepthStencilView(dsv_resource.Get(), &dsv_desc, dsv_desc_heap->GetCPUDescriptorHandleForHeapStart());
+    }
+
+    // we need two PSOs, each for one rendering pass
+    // intermediate pass
+	
+
+
+    ComPtr<ID3D12RootSignature> intermediate_root_signature;
+    ComPtr<ID3D12PipelineState> intermediate_pso;
+    {
+        D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+        featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+        if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+        {
+            featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+        }
+
+        CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
+        ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
+
+        CD3DX12_ROOT_PARAMETER1 root_parameters[2];
+        root_parameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+        root_parameters[1].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
+
+        CD3DX12_STATIC_SAMPLER_DESC sampler_desc;
+        sampler_desc.Init(0);
+
+        CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
+        root_signature_desc.Init_1_1(_countof(root_parameters), &root_parameters[0], 1, &sampler_desc);
+        ComPtr<ID3DBlob> root_signature_blob;
+        ComPtr<ID3DBlob> error_blob;
+        D3DX12SerializeVersionedRootSignature(&root_signature_desc, featureData.HighestVersion, &root_signature_blob, &error_blob);
+        device->CreateRootSignature(0, root_signature_blob->GetBufferPointer(), root_signature_blob->GetBufferSize(), IID_PPV_ARGS(&intermediate_root_signature));
+
+        ComPtr<ID3DBlob> intermediate_vertex_shader;
+        ComPtr<ID3DBlob> intermediate_pixel_shader;
+
+        D3DReadFileToBlob(L"VertexShader.cso", &intermediate_vertex_shader);
+        D3DReadFileToBlob(L"PixelBlendShader.cso", &intermediate_pixel_shader);
+
+        D3D12_INPUT_ELEMENT_DESC intermediate_input_elements[] = {
+		    {"MYPOSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		    {"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		    {"MYTEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+        };
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
+        pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+        pso_desc.VS = CD3DX12_SHADER_BYTECODE(intermediate_vertex_shader.Get());
+        pso_desc.PS = CD3DX12_SHADER_BYTECODE(intermediate_pixel_shader.Get());
+        pso_desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+        pso_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        pso_desc.NumRenderTargets = 1;
+        pso_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        pso_desc.pRootSignature = intermediate_root_signature.Get();
+        pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
+        pso_desc.SampleDesc = { 1, 0 };
+        pso_desc.InputLayout = {intermediate_input_elements, _countof(intermediate_input_elements)};
+        
+
+        device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&intermediate_pso));
+    }
+
+
+    // todo: test single pass rendering, make sure my pipeline is constructed correctly!
+
+
+
+
+
+
+    // final pass
+
+
+
+
+    
 
 
 
