@@ -3,8 +3,8 @@
 
 #include "Application.h"
 
-
-using namespace DirectX;
+using DirectX::XMMATRIX;
+using DirectX::XMVECTOR;
 
 class Camera
 {

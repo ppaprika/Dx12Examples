@@ -1,5 +1,6 @@
 #include "Camera.h"
 
+using namespace DirectX;
 
 void Camera::OnKeyDown(WPARAM key)
 {

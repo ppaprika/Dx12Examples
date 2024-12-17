@@ -121,5 +121,5 @@ BlendCube::BlendCube(std::shared_ptr<UploadBuffer> buffer, std::shared_ptr<Direc
 	commandList->SingleAndWait();
 
 	// init mvp matrix
-	mvp_matrix = XMMatrixIdentity();
+	mvp_matrix = DirectX::XMMatrixIdentity();
 }

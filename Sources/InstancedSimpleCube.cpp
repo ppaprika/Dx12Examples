@@ -114,11 +114,11 @@ InstancedSimpleCube::InstancedSimpleCube(std::shared_ptr<UploadBuffer> buffer,
 	commandList->SingleAndWait();
 
 	// init mvp matrix
-	mvp_matrix = XMMatrixIdentity();
+	mvp_matrix = DirectX::XMMatrixIdentity();
 
 	for(int i = 0; i < _countof(instance_pos_); ++i)
 	{
-		instance_pos_[i] = XMMatrixTranslation(i * 0.5f - 1, 0, 0);
+		instance_pos_[i] = DirectX::XMMatrixTranslation(i * 0.5f - 1, 0, 0);
 	}
 }
 

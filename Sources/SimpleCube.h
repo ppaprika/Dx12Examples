@@ -5,6 +5,10 @@
 
 class DirectCommandList;
 
+using DirectX::XMMATRIX;
+using DirectX::XMFLOAT3;
+using DirectX::XMFLOAT2;
+
 class SimpleCube : public Primitive
 {
 public:

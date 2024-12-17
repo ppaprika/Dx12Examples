@@ -6,6 +6,10 @@
 
 class DirectCommandList;
 
+using DirectX::XMMATRIX;
+using DirectX::XMFLOAT3;
+using DirectX::XMFLOAT2;
+
 class BlendCube : public Primitive
 {
 public:

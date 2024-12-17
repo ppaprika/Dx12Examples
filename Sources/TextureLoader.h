@@ -6,9 +6,7 @@
 
 #include "DirectXTex.h"
 
-
 using Microsoft::WRL::ComPtr;
-using namespace DirectX;
 
 class TextureLoader
 {
@@ -29,17 +27,17 @@ public:
 		D3D12_CPU_DESCRIPTOR_HANDLE srvHandle
 	)
 	{
-		ScratchImage scratchImage;
+		DirectX::ScratchImage scratchImage;
 		HRESULT hr = LoadFromWICFile(
 			filename,
-			WIC_FLAGS_NONE,
+			DirectX::WIC_FLAGS_NONE,
 			nullptr,
 			scratchImage
 		);
 
 		if (FAILED(hr)) return hr;
 
-		const Image* img = scratchImage.GetImage(0, 0, 0);
+		const DirectX::Image* img = scratchImage.GetImage(0, 0, 0);
 
 		// for texture
 		D3D12_RESOURCE_DESC textureDesc = {};

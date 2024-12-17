@@ -13,6 +13,8 @@
 
 #include "IncludePrimitives.h"
 
+using namespace DirectX;
+
 void DragAndCheck::Init()
 {
 	Game::Init();

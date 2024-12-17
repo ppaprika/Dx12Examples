@@ -2,7 +2,10 @@
 
 #include "Primitive.h"
 
-
+using DirectX::XMMATRIX;
+using DirectX::XMFLOAT4X4;
+using DirectX::XMFLOAT3;
+using DirectX::XMFLOAT2;
 
 class InstancedSimpleCube : public Primitive
 {

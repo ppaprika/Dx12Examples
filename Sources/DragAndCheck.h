@@ -5,12 +5,13 @@
 #include "Game.h"
 #include "TextureLoader.h"
 
-using namespace DirectX;
 
 class InstancedSimpleCube;
 class SimpleCube;
 
 #define MODELCLASS InstancedSimpleCube
+
+using DirectX::XMMATRIX;
 
 class DragAndCheck : public Game
 {

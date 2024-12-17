@@ -1,11 +1,9 @@
-#define WIN32_LEAN_AND_MEAN
 
+#include "TextureLoader.h"
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <dxgi1_3.h>
 #include <dxgi1_4.h>
-
-#include "Helpers.h"
 
 #include <dxgidebug.h>
 #include <float.h>
@@ -13,10 +11,21 @@
 #include <D3DX12/d3dx12_core.h>
 #include <D3DX12/d3dx12_root_signature.h>
 
+#include "Helpers.h"
+#include "UploadBuffer.h"
 #include "Camera.h"
 #include "IndexBufferView.h"
-#include "UploadBuffer.h"
 #include "VertexBufferView.h"
+
+
+
+#ifdef TestIncludes
+int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
+{
+    return 0;
+}
+#else
+
 
 using namespace DirectX;
 
@@ -25,6 +34,7 @@ constexpr UINT window_height = 600;
 
 
 XMMATRIX mvp_matrix;
+
 
 struct VertexPosColor
 {
@@ -64,11 +74,11 @@ UINT64 fence_value = 0;
 
 void ReportLiveObjects()
 {
-	IDXGIDebug1* dxgiDebug;
-	DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
+    IDXGIDebug1* dxgiDebug;
+    DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug));
 
-	dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
-	dxgiDebug->Release();
+    dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_IGNORE_INTERNAL);
+    dxgiDebug->Release();
 }
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -97,7 +107,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
     // create window
     HWND hwnd = CreateWindowEx(
-		0,
+        0,
         CLASS_NAME,
         L"Window_1",
         WS_OVERLAPPEDWINDOW,
@@ -108,7 +118,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         nullptr
     );
 
-    if(hwnd == nullptr)
+    if (hwnd == nullptr)
     {
         ShowLastError();
         return 0;
@@ -157,13 +167,13 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
     // create command allocator
     ComPtr<ID3D12CommandAllocator> allocators[back_buffer_num];
-    for(size_t i = 0; i < back_buffer_num; ++i)
+    for (size_t i = 0; i < back_buffer_num; ++i)
     {
         ThrowIfFailed(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocators[i])));
     }
 
     // create command lists
-    ComPtr<ID3D12CommandList> command_lists;
+    ComPtr<ID3D12GraphicsCommandList> command_lists;
     ThrowIfFailed(device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocators[current_back_buffer_index].Get(), nullptr, IID_PPV_ARGS(&command_lists)));
 
     // create command queue
@@ -177,7 +187,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
     // create fence
     ComPtr<ID3D12Fence> fence;
-    ThrowIfFailed(device->CreateFence(fence_value, D3D12_FENCE_FLAG_NONE,  IID_PPV_ARGS(&fence)));
+    ThrowIfFailed(device->CreateFence(fence_value, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
 
     // create swap chain
     ComPtr<IDXGISwapChain3> swap_chain;
@@ -243,7 +253,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         device->CreateCommittedResource(&heap_props, D3D12_HEAP_FLAG_NONE, &resource_desc, D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(&intermediate_resource));
     }
 
-    
+
     ComPtr<ID3D12DescriptorHeap> intermediate_rtv_desc_heap;
     ComPtr<ID3D12DescriptorHeap> intermediate_srv_desc_heap;
     {
@@ -303,9 +313,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
     // we need two PSOs, each for one rendering pass
     // intermediate pass
-	
-
-
     ComPtr<ID3D12RootSignature> intermediate_root_signature;
     ComPtr<ID3D12PipelineState> intermediate_pso;
     {
@@ -327,7 +334,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         sampler_desc.Init(0);
 
         CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC root_signature_desc = {};
-        root_signature_desc.Init_1_1(_countof(root_parameters), &root_parameters[0], 1, &sampler_desc);
+        root_signature_desc.Init_1_1(_countof(root_parameters), &root_parameters[0], 1, &sampler_desc, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
         ComPtr<ID3DBlob> root_signature_blob;
         ComPtr<ID3DBlob> error_blob;
         D3DX12SerializeVersionedRootSignature(&root_signature_desc, featureData.HighestVersion, &root_signature_blob, &error_blob);
@@ -340,9 +347,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         D3DReadFileToBlob(L"PixelBlendShader.cso", &intermediate_pixel_shader);
 
         D3D12_INPUT_ELEMENT_DESC intermediate_input_elements[] = {
-		    {"MYPOSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		    {"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		    {"MYTEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+            {"MYPOSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"MYCOLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+            {"MYTEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
         };
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = {};
@@ -356,16 +363,33 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
         pso_desc.pRootSignature = intermediate_root_signature.Get();
         pso_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
         pso_desc.SampleDesc = { 1, 0 };
-        pso_desc.InputLayout = {intermediate_input_elements, _countof(intermediate_input_elements)};
-        
+        pso_desc.InputLayout = { intermediate_input_elements, _countof(intermediate_input_elements) };
 
         device->CreateGraphicsPipelineState(&pso_desc, IID_PPV_ARGS(&intermediate_pso));
     }
 
 
     // todo: test single pass rendering, make sure my pipeline is constructed correctly!
+    // Load Texture
+    ComPtr<ID3D12DescriptorHeap> rsv_des_heap;
+    {
+        D3D12_DESCRIPTOR_HEAP_DESC rsv_des_heap_desc = {};
+        rsv_des_heap_desc.NumDescriptors = 1;
+        rsv_des_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+        device->CreateDescriptorHeap(&rsv_des_heap_desc, IID_PPV_ARGS(&rsv_des_heap));
+    }
+    TextureLoader::TextureResource texture_resource;
+    TextureLoader::LoadTextureFromFile(device, command_lists, L"resources/Texture.png", texture_resource, rsv_des_heap->GetCPUDescriptorHandleForHeapStart());
 
+    {
+        command_lists->Close();
+        ID3D12CommandList* lists[1] = {command_lists.Get()};
+        command_queue->ExecuteCommandLists(1, lists);
+        command_queue->Signal(fence.Get(), fence_value);
 
+        fence_value++;
+    }
+    
 
 
 
@@ -375,17 +399,19 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdL
 
 
 
-    
-
-
 
 
     MSG msg = {};
-    while(GetMessage(&msg, nullptr, 0, 0))
+    while (GetMessage(&msg, nullptr, 0, 0))
     {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+}
+
+void Render()
+{
+
 }
 
 
@@ -393,6 +419,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
+    case WM_PAINT:
+        Render();
+        return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -400,3 +429,5 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
+#endif
+
